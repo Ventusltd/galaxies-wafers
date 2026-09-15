@@ -1,0 +1,9 @@
+{
+ "type": "CodeTileSet",
+ "S": 25,
+ "tile_over": 5000,
+ "manifest_built_utc": "2026-09-15T16:17:31Z",
+ "layers": {
+  "copying": "tiles/copying/index.json"
+ }
+}
