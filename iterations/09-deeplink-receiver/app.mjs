@@ -72,8 +72,29 @@ const view = { x: 0, y: 0, zoom: 1, w: 0, h: 0, dpr: 1, focus: -1, link: null };
 /* The one read-only hook for layers: the live camera, and listeners called after every frame. */
 /* Listeners get a frozen scalar snapshot, never the live object: a listener that
    mutates what it received cannot move the wafer's camera. (Codex review.) */
-const snapshot = () => Object.freeze({ x: view.x, y: view.y, zoom: view.zoom, w: view.w, h: view.h, dpr: view.dpr });
-window.__wafer = Object.freeze({ get view() { return snapshot(); }, onDraw: new Set() });
+const snapshot = () => Object.freeze({ x: view.x, y: view.y, zoom: view.zoom, w: view.w, h: view.h, dpr: view.dpr, moving: MOTION.moving });
+
+/* SMOOTH ZOOM (09b), ported from the root page (app.mjs, "Merge 38") and
+   iterations/22-fast-zoom/app.mjs. While a gesture is moving the camera the
+   wafer is not re-rasterised: its points are drawn once into an offscreen
+   texture CACHE_SPAN times the screen in each direction, and each moving frame
+   draws only that texture as one transformed quad. The texture is redrawn when
+   the camera leaves it (panned past its margin, zoomed out past it, or
+   magnified more than CACHE_MAGNIFY times), and full detail returns SETTLE_MS
+   after the last gesture event. Layers read `moving` from the snapshot. */
+const SETTLE_MS = 150;
+const CACHE_SPAN = 1.5;
+const CACHE_MAGNIFY = 2;
+const MOTION = { moving: false, timer: 0 };
+function motion() {
+  MOTION.moving = true;
+  clearTimeout(MOTION.timer);
+  MOTION.timer = setTimeout(() => { MOTION.moving = false; draw(); }, SETTLE_MS);
+}
+
+window.__wafer = Object.freeze({ get view() { return snapshot(); }, onDraw: new Set(),
+  get moving() { return MOTION.moving; }, get settleMs() { return SETTLE_MS; },
+  get stats() { return Object.freeze({ drawn: frameStats.drawn, total: U.n, rasters: cache.rasters }); } });
 
 /* ── the surface ─────────────────────────────────────────────────────────── */
 
@@ -165,7 +186,9 @@ function compile(g, type, src) {
    failure and then asked the same canvas for a 2D context, which returns null:
    the fallback it advertised did not exist. */
 function initGL() {
-  gl = stage.getContext('webgl2', { antialias: true, alpha: false });
+  /* 09b: antialias off (iterations/22-fast-zoom). Each point already fades its own
+     edge in the fragment shader; multisampling a full-screen buffer is GPU cost. */
+  gl = stage.getContext('webgl2', { antialias: false, alpha: false });
   if (!gl) { gl = null; return fallback2d(); }
   try { return buildGL(); }
   catch (e) { gl = null; console.warn('WebGL setup failed, falling back:', e.message); return fallback2d(); }
@@ -225,12 +248,20 @@ function ensureOverlay() {
   return overlay;
 }
 
+/* 09b: the marks canvas is resized only when the stage changes size and cleared
+   only when it holds something; assigning canvas.width every frame reallocated a
+   full-screen backing store on every frame. */
+let marksDirty = true;
 function drawMarks() {
   const o = ensureOverlay();
-  o.width = stage.width; o.height = stage.height;
+  const has = !!view.link || view.focus >= 0;
+  if (o.width !== stage.width || o.height !== stage.height) { o.width = stage.width; o.height = stage.height; marksDirty = true; }
+  if (!has && !marksDirty) return;
   const c = o.getContext('2d');
   c.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
   c.clearRect(0, 0, view.w, view.h);
+  marksDirty = has;
+  if (!has) return;
   const toScreen = ([x, y]) => [
     (x - view.x) * view.zoom + view.w / 2,
     view.h / 2 - ((y - view.y) * view.zoom)
@@ -258,16 +289,124 @@ function drawMarks() {
   }
 }
 
+/* ── the moving-frame cache (from the root app.mjs / iterations/22-fast-zoom) ── */
+
+const BLIT_VS = `#version 300 es
+in vec2 a_q; uniform vec4 u_rect; out vec2 v_uv;
+void main(){ v_uv = a_q; gl_Position = vec4(mix(u_rect.xy, u_rect.zw, a_q), 0.0, 1.0); }`;
+const BLIT_FS = `#version 300 es
+precision mediump float; in vec2 v_uv; uniform sampler2D u_tex; out vec4 o;
+void main(){ o = texture(u_tex, v_uv); }`;
+
+const cache = { fbo: null, tex: null, w: 0, h: 0, prog: null, vao: null, rect: null, valid: false, x: 0, y: 0, zoom: 1, rasters: 0, broken: false };
+
+/* CULLING BY THE LAW. r = sqrt(key), so the keys that can appear in a world
+   rectangle are exactly those whose radius lies between the rectangle's nearest
+   and farthest distance from the origin: keys in [r0^2, r1^2]. U.keys is sorted,
+   so that is one contiguous index range, found by two binary searches, and one
+   drawArrays call over it. POINT_MARGIN_PX widens the rectangle by the largest
+   point radius so a point straddling the edge is not cut. */
+const POINT_MARGIN_PX = 14;
+const frameStats = { drawn: 0 };
+function lowerBound(a, v) { let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >>> 1; if (a[m] < v) lo = m + 1; else hi = m; } return lo; }
+function visibleRange(halfWpx, halfHpx, cx, cy) {
+  const k = view.zoom * view.dpr;
+  const hw = halfWpx / k + POINT_MARGIN_PX / view.zoom, hh = halfHpx / k + POINT_MARGIN_PX / view.zoom;
+  const ax = Math.abs(cx), ay = Math.abs(cy);
+  const dx = Math.max(ax - hw, 0), dy = Math.max(ay - hh, 0);
+  const r0 = Math.hypot(dx, dy) / SPACING, r1 = Math.hypot(ax + hw, ay + hh) / SPACING;
+  return [lowerBound(U.keys, Math.floor(r0 * r0)), lowerBound(U.keys, Math.ceil(r1 * r1) + 1)];
+}
+
+function drawPoints(w, h, cx, cy) {
+  gl.clearColor(0.043, 0.051, 0.071, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.useProgram(prog); gl.bindVertexArray(vao);
+  gl.uniform2f(loc.u_res, w, h);
+  gl.uniform2f(loc.u_cam, cx, cy);
+  gl.uniform1f(loc.u_zoom, view.zoom * view.dpr);
+  gl.uniform1f(loc.u_dpr, view.dpr);
+  gl.uniform1f(loc.u_focusKey, view.focus);
+  const [lo, hi] = visibleRange(w / 2, h / 2, cx, cy);
+  if (hi > lo) gl.drawArrays(gl.POINTS, lo, hi - lo);
+  frameStats.drawn = Math.max(0, hi - lo);
+}
+
+/* Returns false when this GPU cannot give a render target; the page then draws
+   every moving frame in full, as before. */
+function ensureCache() {
+  if (cache.broken) return false;
+  const max = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
+  const w = Math.min(max, Math.ceil(stage.width * CACHE_SPAN)), h = Math.min(max, Math.ceil(stage.height * CACHE_SPAN));
+  if (cache.tex && cache.w === w && cache.h === h) return true;
+  try {
+    if (!cache.prog) {
+      const p = gl.createProgram();
+      gl.attachShader(p, compile(gl, gl.VERTEX_SHADER, BLIT_VS));
+      gl.attachShader(p, compile(gl, gl.FRAGMENT_SHADER, BLIT_FS));
+      gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+      cache.prog = p; cache.rect = gl.getUniformLocation(p, 'u_rect');
+      cache.vao = gl.createVertexArray(); gl.bindVertexArray(cache.vao);
+      const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
+      const l = gl.getAttribLocation(p, 'a_q'); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0);
+    }
+    if (cache.tex) { gl.deleteTexture(cache.tex); gl.deleteFramebuffer(cache.fbo); }
+    cache.tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, cache.tex);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, w, h);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    cache.fbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, cache.fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, cache.tex, 0);
+    const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    if (!ok) throw new Error('framebuffer incomplete');
+    cache.w = w; cache.h = h; cache.valid = false;
+    return true;
+  } catch (e) {
+    console.warn('moving-frame cache unavailable, drawing every frame in full:', e.message);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    cache.broken = true;
+    return false;
+  }
+}
+
+/* Where the cached texture lands on screen, in clip space: [x0, y0, x1, y1]. */
+function cacheRect() {
+  const hw = cache.w / (cache.zoom * view.dpr * 2), hh = cache.h / (cache.zoom * view.dpr * 2);
+  const kx = view.zoom * view.dpr * 2 / stage.width, ky = view.zoom * view.dpr * 2 / stage.height;
+  return [(cache.x - hw - view.x) * kx, (cache.y - hh - view.y) * ky,
+          (cache.x + hw - view.x) * kx, (cache.y + hh - view.y) * ky];
+}
+
+function rasterCache() {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, cache.fbo);
+  gl.viewport(0, 0, cache.w, cache.h);
+  drawPoints(cache.w, cache.h, view.x, view.y);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, stage.width, stage.height);
+  cache.x = view.x; cache.y = view.y; cache.zoom = view.zoom; cache.valid = true; cache.rasters++;
+}
+
+function blitCache() {
+  let r = cacheRect();
+  const covers = r[0] <= -1 && r[1] <= -1 && r[2] >= 1 && r[3] >= 1 && view.zoom / cache.zoom <= CACHE_MAGNIFY;
+  if (!cache.valid || !covers) { rasterCache(); r = cacheRect(); }
+  gl.clearColor(0.043, 0.051, 0.071, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.disable(gl.BLEND);
+  gl.useProgram(cache.prog); gl.bindVertexArray(cache.vao);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, cache.tex);
+  gl.uniform4f(cache.rect, r[0], r[1], r[2], r[3]);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  gl.enable(gl.BLEND);
+}
+
 function render() {
   if (gl) {
-    gl.clearColor(0.043, 0.051, 0.071, 1); gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.useProgram(prog); gl.bindVertexArray(vao);
-    gl.uniform2f(loc.u_res, stage.width, stage.height);
-    gl.uniform2f(loc.u_cam, view.x, view.y);
-    gl.uniform1f(loc.u_zoom, view.zoom * view.dpr);
-    gl.uniform1f(loc.u_dpr, view.dpr);
-    gl.uniform1f(loc.u_focusKey, view.focus);
-    gl.drawArrays(gl.POINTS, 0, U.n);
+    if (MOTION.moving && ensureCache()) blitCache();
+    else { cache.valid = false; drawPoints(stage.width, stage.height, view.x, view.y); }
   } else if (ctx2d) {
     const c = ctx2d;
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -307,7 +446,7 @@ function flyTo(key, zoom) {
     const e = u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
     view.x = x0 + (x - x0) * e; view.y = y0 + (y - y0) * e;
     view.zoom = Math.exp(Math.log(z0) + (Math.log(z1) - Math.log(z0)) * e);
-    render();
+    motion(); render();
     if (u < 1) requestAnimationFrame(step);
   })(t0);
 }
@@ -449,12 +588,13 @@ function connect(ka, kb) {
 /* ── gestures ────────────────────────────────────────────────────────────── */
 
 function gestures() {
-  let down = null, moved = 0, pinch = null;
+  let down = null, moved = 0, pinch = null, wasPinch = false;   /* 09b: a finger lifting after a pinch is not a tap */
   const pts = new Map();
   stage.addEventListener('pointerdown', e => {
     stage.setPointerCapture(e.pointerId);
     pts.set(e.pointerId, [e.clientX, e.clientY]);
     if (pts.size === 1) { down = [e.clientX, e.clientY]; moved = 0; }
+    if (pts.size >= 2) wasPinch = true;
     if (pts.size === 2) {
       const [p, q] = [...pts.values()];
       pinch = { d: Math.hypot(p[0] - q[0], p[1] - q[1]), z: view.zoom };
@@ -468,31 +608,31 @@ function gestures() {
       const [p, q] = [...pts.values()];
       const d = Math.hypot(p[0] - q[0], p[1] - q[1]);
       if (pinch.d > 0) view.zoom = Math.max(0.02, Math.min(4000, pinch.z * (d / pinch.d)));
-      draw(); return;
+      motion(); draw(); return;
     }
     if (pts.size === 1) {
       const dx = e.clientX - prev[0], dy = e.clientY - prev[1];
       moved += Math.abs(dx) + Math.abs(dy);
       view.x -= dx / view.zoom; view.y += dy / view.zoom;
-      draw();
+      motion(); draw();
     }
   });
   const up = e => {
-    if (pts.size === 1 && down && moved < 7) {
+    if (pts.size === 1 && down && moved < 7 && !wasPinch) {
       const key = nearestKeyAt(e.clientX, e.clientY);
       if (key >= 0) { view.focus = key; paintPanel(key); view.link = null; draw(); }
     }
     pts.delete(e.pointerId);
     if (pts.size < 2) pinch = null;
-    if (pts.size === 0) down = null;
+    if (pts.size === 0) { down = null; wasPinch = false; }
   };
   stage.addEventListener('pointerup', up);
-  stage.addEventListener('pointercancel', e => { pts.delete(e.pointerId); pinch = null; down = null; });
+  stage.addEventListener('pointercancel', e => { pts.delete(e.pointerId); pinch = null; down = null; if (pts.size === 0) wasPinch = false; });
   stage.addEventListener('wheel', e => {
     e.preventDefault();
     const f = Math.exp(-e.deltaY * 0.0016);
     view.zoom = Math.max(0.02, Math.min(4000, view.zoom * f));
-    draw();
+    motion(); draw();
   }, { passive: false });
   stage.addEventListener('dblclick', () => { view.focus = -1; view.link = null; $('panel').hidden = true; home(); });
 }

@@ -23,7 +23,7 @@
  * still receives the same tap and does whatever it does with it; nothing here
  * captures, prevents or stops the event.
  */
-import { place } from '../../lib.mjs';
+import { placeAll } from '../../lib.mjs';
 /* Iteration 09: layers come from the engine's parse, and dropped ids are reported, not swallowed. */
 import { LINK, ROOT, reportLayers } from './receiver.mjs';
 import { parseDeepLink } from '../../engine/code-galaxy-engine.mjs';
@@ -77,7 +77,7 @@ style.textContent = `
 .ekv{font-size:10.5px;word-break:break-word}.ek{color:#8b93a7}.ev{color:#e7ebf3}
 .eschema{color:#7fd6a2}.enone{color:#b39ddb}
 .elinks{font-size:10.5px;margin-top:.15rem}.elink{color:#5ec8f2}
-#overlay{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+#overlay{position:fixed;left:0;top:0;pointer-events:none;z-index:1;transform-origin:50% 50%;will-change:transform}
 `;
 document.head.appendChild(style);
 
@@ -190,6 +190,7 @@ async function toggle(l, on) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         s.doc = await r.json();
       }
+      s.cache = s.doc.features.length ? buildCache(s.doc) : null;   /* 09b: world positions placed once per layer */
       s.status = s.doc.features.length ? 'OK' : 'EMPTY';
       if (!s.doc.features.length) s.why = 'loaded; the layer holds no features';
     } catch (e) { s.status = 'FAIL'; s.why = e.message; }
@@ -276,49 +277,136 @@ function readLayersFromURL() {
   for (const id of wanted) toggle(known.get(id), true);
 }
 
-/* ── drawing: follow the wafer's frame ───────────────────────────────────── */
-
 /* ── the camera: the wafer's own, read live ──────────────────────────────── */
 
 const liveView = () => window.__wafer?.view ?? null;
 
-/* The wafer's formula, exactly: see drawMarks() and nearestKeyAt() in app.mjs. */
-const toScreen = (v, [x, y]) => [(x - v.x) * v.zoom + v.w / 2, v.h / 2 - (y - v.y) * v.zoom];
+/* SMOOTH ZOOM (09b), ported from the root layers-panel.mjs ("Merge 38") and
+   iterations/22-fast-zoom/layers-panel.mjs, keeping this iteration's receiver
+   behaviour untouched.
+   POSITIONS ONCE PER LAYER. buildCache places every key of a layer into
+   Float32Arrays when the layer loads, with a bounding box per route, so a frame
+   never calls place() and routes wholly off screen are skipped.
+   MOVING FRAMES WITHOUT RE-STROKING. The overlay canvas is OVERLAY_SPAN times the
+   screen each way, centred on it. A settled frame rasterises every layer into it
+   around the current camera (the anchor). While the wafer reports a gesture, a
+   frame only sets a CSS transform that carries the anchor raster to where the
+   camera now puts it; only when that raster no longer covers the screen, or is
+   magnified past OVERLAY_MAGNIFY, is it drawn again, thinned to every
+   THIN_STEP-th vertex and point. Full detail returns when the wafer settles. */
+const THIN_STEP = 4;
+const OVERLAY_SPAN = 1.5;
+const OVERLAY_MAGNIFY = 2;
+let overlayDirty = false, anchor = null;
+
+function buildCache(doc) {
+  const ptKeys = [], ptFeat = [], rtKeys = [], rtStart = [0], rtFeat = [];
+  doc.features.forEach((f, i) => {
+    const g = f.geometry;
+    if (g?.type === 'Point') { ptKeys.push(g.key); ptFeat.push(i); }
+    else if (g?.type === 'LineString' && g.keys?.length) {
+      for (const k of g.keys) rtKeys.push(k);
+      rtStart.push(rtKeys.length); rtFeat.push(i);
+    }
+  });
+  const pts = placeAll(ptKeys), verts = placeAll(rtKeys);
+  const nR = rtFeat.length, box = new Float32Array(nR * 4);
+  for (let r = 0; r < nR; r++) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let j = rtStart[r]; j < rtStart[r + 1]; j++) {
+      const x = verts[j * 2], y = verts[j * 2 + 1];
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+    box[r * 4] = x0; box[r * 4 + 1] = y0; box[r * 4 + 2] = x1; box[r * 4 + 3] = y1;
+  }
+  return { pts, ptFeat: Int32Array.from(ptFeat), verts, rtStart: Uint32Array.from(rtStart), rtFeat: Int32Array.from(rtFeat), box };
+}
 
 function* visibleLayers() {
   for (const l of (manifest?.layers || [])) {
     const s = state.get(l.id);
-    if (s?.on && s.status === 'OK') yield [l, s.doc];
+    if (s?.on && s.status === 'OK' && s.cache) yield [l, s.doc, s.cache];
   }
 }
 
 /* ── drawing ─────────────────────────────────────────────────────────────── */
 
-function drawOverlay() {
-  const v = liveView();
-  if (!v || !v.w || !v.h) return;          /* the wafer has not framed itself yet */
+function placeOverlay(v) {
   const dpr = v.dpr || 1;
-  const W = Math.round(v.w * dpr), H = Math.round(v.h * dpr);
-  if (overlay.width !== W || overlay.height !== H) { overlay.width = W; overlay.height = H; }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, v.w, v.h);
-  const S = p => toScreen(v, p);
+  const cw = Math.round(v.w * OVERLAY_SPAN), ch = Math.round(v.h * OVERLAY_SPAN);
+  const W = Math.round(cw * dpr), H = Math.round(ch * dpr);
+  if (overlay.width !== W || overlay.height !== H) {
+    overlay.width = W; overlay.height = H;
+    overlay.style.width = cw + 'px'; overlay.style.height = ch + 'px';
+    overlay.style.left = Math.round((v.w - cw) / 2) + 'px'; overlay.style.top = Math.round((v.h - ch) / 2) + 'px';
+    overlayDirty = true; anchor = null;
+  }
+  return { cw, ch, dpr };
+}
 
-  for (const [l, doc] of visibleLayers()) {
-    ctx.strokeStyle = l.colour; ctx.fillStyle = l.colour;
+/* The CSS transform that carries the anchor raster to the camera v, or null when
+   the result would leave part of the screen uncovered or be too magnified. */
+function carry(v, cw, ch) {
+  if (!anchor || anchor.w !== v.w || anchor.h !== v.h) return null;
+  const s = v.zoom / anchor.zoom;
+  if (s > OVERLAY_MAGNIFY) return null;
+  const dx = (anchor.x - v.x) * v.zoom, dy = -(anchor.y - v.y) * v.zoom;
+  if (Math.abs(dx) + v.w / 2 > s * cw / 2 || Math.abs(dy) + v.h / 2 > s * ch / 2) return null;
+  return `translate(${dx.toFixed(2)}px,${dy.toFixed(2)}px) scale(${s.toFixed(5)})`;
+}
+
+function drawOverlay(snap) {
+  const v = snap && typeof snap.zoom === 'number' ? snap : liveView();
+  if (!v || !v.w || !v.h) return;          /* the wafer has not framed itself yet */
+  const { cw, ch, dpr } = placeOverlay(v);
+
+  if (v.moving && snap) {
+    const t = carry(v, cw, ch);
+    if (t) { overlay.style.transform = t; return; }
+  }
+
+  const units = [...visibleLayers()];
+  overlay.style.transform = '';
+  if (!units.length && !picked && !overlayDirty) { anchor = null; return; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cw, ch);
+  overlayDirty = units.length > 0 || !!picked;
+  anchor = { x: v.x, y: v.y, zoom: v.zoom, w: v.w, h: v.h };
+
+  /* The wafer's own mapping (drawMarks() and nearestKeyAt() in app.mjs), shifted
+     into the larger canvas: X = (x - v.x) * zoom + cw/2, Y = ch/2 - (y - v.y) * zoom. */
+  const z = v.zoom, ox = cw / 2 - v.x * z, oy = ch / 2 + v.y * z;
+  const step = v.moving ? THIN_STEP : 1;
+  const wx0 = (-2 - ox) / z, wx1 = (cw + 2 - ox) / z, wy0 = (oy - ch - 2) / z, wy1 = (oy + 2) / z;
+
+  for (const [l, , c] of units) {
     ctx.globalAlpha = l.draws === 'lines' ? 0.55 : 0.8;
-    ctx.lineWidth = 1;
-    for (const f of doc.features) {
-      const g = f.geometry;
-      if (g.type === 'Point') {
-        const [x, y] = S(place(g.key));
-        if (x < -2 || y < -2 || x > v.w + 2 || y > v.h + 2) continue;
-        ctx.fillRect(x - 1, y - 1, 2, 2);
-      } else if (g.type === 'LineString') {
-        ctx.beginPath();
-        g.keys.forEach((k, i) => { const [x, y] = S(place(k)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-        ctx.stroke();
+    if (c.ptFeat.length) {
+      ctx.fillStyle = l.colour;
+      ctx.beginPath();
+      const P = c.pts;
+      for (let i = 0; i < c.ptFeat.length; i += step) {
+        const X = P[i * 2] * z + ox, Y = oy - P[i * 2 + 1] * z;
+        if (X < -2 || Y < -2 || X > cw + 2 || Y > ch + 2) continue;
+        ctx.rect(X - 1, Y - 1, 2, 2);
       }
+      ctx.fill();
+    }
+    if (c.rtFeat.length) {
+      ctx.strokeStyle = l.colour; ctx.lineWidth = 1;
+      ctx.beginPath();
+      const V = c.verts, B = c.box, S = c.rtStart;
+      for (let r = 0; r < c.rtFeat.length; r++) {
+        if (B[r * 4 + 2] < wx0 || B[r * 4] > wx1 || B[r * 4 + 3] < wy0 || B[r * 4 + 1] > wy1) continue;
+        const a = S[r], e = S[r + 1] - 1;
+        ctx.moveTo(V[a * 2] * z + ox, oy - V[a * 2 + 1] * z);
+        for (let j = a + step; j < e; j += step) ctx.lineTo(V[j * 2] * z + ox, oy - V[j * 2 + 1] * z);
+        if (e > a) ctx.lineTo(V[e * 2] * z + ox, oy - V[e * 2 + 1] * z);
+      }
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
   }
@@ -326,9 +414,10 @@ function drawOverlay() {
   if (picked) {
     const g = picked.feature.geometry;
     ctx.strokeStyle = picked.layer.colour; ctx.lineWidth = 1.4;
-    for (const k of (g.type === 'Point' ? [g.key] : g.keys)) {
-      const [x, y] = S(place(k));
-      ctx.beginPath(); ctx.arc(x, y, 7, 0, 6.2832); ctx.stroke();
+    const pk = g.type === 'Point' ? [g.key] : g.keys;
+    const P = placeAll(pk);
+    for (let i = 0; i < pk.length; i++) {
+      ctx.beginPath(); ctx.arc(P[i * 2] * z + ox, oy - P[i * 2 + 1] * z, 7, 0, 6.2832); ctx.stroke();
     }
   }
 }
@@ -337,31 +426,37 @@ window.__wafer?.onDraw.add(drawOverlay);
 
 /* ── tap to inspect ──────────────────────────────────────────────────────── */
 
-function segDist2(px, py, [ax, ay], [bx, by]) {
+function segDist2(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
   const t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0;
   const qx = ax + t * dx - px, qy = ay + t * dy - py;
   return qx * qx + qy * qy;
 }
 
-/* The nearest drawn feature to a screen point, or null when none is within reach. */
+/* The nearest drawn feature to a screen point, or null when none is within reach.
+   Reads the positions cached per layer; never calls place() per feature. */
 function pickAt(cx, cy) {
   const v = liveView();
   if (!v || !v.zoom) return null;
+  const z = v.zoom, ox = v.w / 2 - v.x * z, oy = v.h / 2 + v.y * z;
   let best = null, bestD = PICK_REACH * PICK_REACH;
-  for (const [l, doc] of visibleLayers()) {
-    for (const f of doc.features) {
-      const g = f.geometry;
-      let d = Infinity;
-      if (g.type === 'Point') {
-        const [x, y] = toScreen(v, place(g.key));
-        d = (x - cx) ** 2 + (y - cy) ** 2;
-      } else if (g.type === 'LineString' && g.keys.length) {
-        const pts = g.keys.map(k => toScreen(v, place(k)));
-        d = segDist2(cx, cy, pts[0], pts[0]);
-        for (let i = 1; i < pts.length; i++) d = Math.min(d, segDist2(cx, cy, pts[i - 1], pts[i]));
+  for (const [l, doc, c] of visibleLayers()) {
+    for (let i = 0; i < c.ptFeat.length; i++) {
+      const X = c.pts[i * 2] * z + ox, Y = oy - c.pts[i * 2 + 1] * z;
+      const d = (X - cx) ** 2 + (Y - cy) ** 2;
+      if (d < bestD) { bestD = d; best = { layer: l, feature: doc.features[c.ptFeat[i]] }; }
+    }
+    const V = c.verts, S = c.rtStart;
+    for (let r = 0; r < c.rtFeat.length; r++) {
+      const a = S[r], e = S[r + 1];
+      let px = V[a * 2] * z + ox, py = oy - V[a * 2 + 1] * z;
+      let d = (px - cx) ** 2 + (py - cy) ** 2;
+      for (let j = a + 1; j < e; j++) {
+        const qx = V[j * 2] * z + ox, qy = oy - V[j * 2 + 1] * z;
+        d = Math.min(d, segDist2(cx, cy, px, py, qx, qy));
+        px = qx; py = qy;
       }
-      if (d < bestD) { bestD = d; best = { layer: l, feature: f }; }
+      if (d < bestD) { bestD = d; best = { layer: l, feature: doc.features[c.rtFeat[r]] }; }
     }
   }
   return best;
