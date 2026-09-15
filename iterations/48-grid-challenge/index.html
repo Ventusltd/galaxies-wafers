@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="color-scheme" content="dark">
+<title>Which Element Meets Which Grid Question</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="mark">GRID QUESTIONS</div>
+  <h1>Which element meets which grid question</h1>
+  <p class="dim">The elements catalogue asks: “how can this or that solve the next Grid Challenge?” Below is a fixed list of grid questions in plain engineering words. Open one: the page then fetches the catalogue (once) and lists the elements whose <b>own</b> title or description contains that question's search terms, next to the galaxy iteration that already demonstrates the question with a real engine module.</p>
+  <p id="cat" class="dim">Catalogue: <span id="catstate">WAIT · nothing fetched until a question is opened</span></p>
+</header>
+
+<p class="boundary">Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.</p>
+
+<main id="list" aria-label="grid questions"></main>
+
+<details id="questions">
+  <summary>Questions</summary>
+  <ol>
+    <li><b>How does this help draw a system or a single-line diagram?</b> It draws nothing itself. It points each SLD question at candidate elements: substation (nearest-search question), cable route (route question), feeder current and voltage drop (feeder questions), circuit ratings (ratings question), demand and firm capacity (site questions). The data fields read are <code>title</code>, <code>description</code>, <code>key</code>, <code>live</code> and <code>function_keys</code> of each element in <code>catalogue/elements.json</code>, and <code>name</code> in <code>catalogue/functions.json</code>.</li>
+    <li><b>What is this code used for?</b> <code>grid.mjs</code> in this directory: <code>QUESTIONS</code> (the fixed list), <code>matchElement()</code> (whole-word, case-insensitive search of the element's own title and description), <code>openQuestion()</code> (fills one question once). Catalogue commit: <span class="cc"></span>. Callers: none in the estate; this page only (name-match inference over the iterations directory).</li>
+    <li><b>Where does it lead next?</b> ASSEMBLY opens the matched element in iteration 36 (<code>?key=block:…</code>), and the linked galaxy iteration runs the real engine module for the question. Whether an element truly answers a question is <b>not established</b>: a word match is not evidence of function.</li>
+  </ol>
+</details>
+
+<details id="machine">
+  <summary>Machine detail</summary>
+  <p>Inputs: <code>elements.json</code> and <code>functions.json</code> at elements commit <span class="cc"></span> (fetched when the first question is opened; bounded queue of 4, 15 s timeout each, one promise per URL, a failed fetch can be retried). Per question: a list of search terms (words, case-insensitive, whole-word). Outputs: per question, a count of matched elements (counted at run time), each with its verbatim title and description, matched words highlighted, and buttons ASSEMBLY / APP. Refusals: EMPTY when no element's own words contain a term; FAIL with the network reason when a fetch fails; APP gives a reason when the element records no live address. No physical or electrical result is computed on this page.</p>
+  <p id="counts" class="dim">Match counts: not yet counted (open a question).</p>
+</details>
+
+<script type="module" src="grid.mjs"></script>
+</body>
+</html>
