@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 15,
+ "count": 16,
  "iterations": [
   {
    "n": 1,
@@ -143,6 +143,15 @@
    "commit": "0045db855f071f57314c511192c1b671b08c0aeb",
    "committed": "2026-09-15T19:53:15+01:00",
    "subject": "iteration 28 the nearest-search trap: the proof's degree-box trap made visible, gate seen to hold and to fail"
+  },
+  {
+   "n": 29,
+   "dir": "29-rating-envelope",
+   "slug": "rating-envelope",
+   "title": "Ratings That Do Not Add",
+   "commit": "bdffefe2393eb817409702300c8e61bceeaa8378",
+   "committed": "2026-09-15T19:54:04+01:00",
+   "subject": "iteration 29 ratings that do not add: per-circuit ratings, a corridor, and the module's refusal to sum"
   }
  ]
 }
