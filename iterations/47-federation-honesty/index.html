@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Is Green Earned?</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="green.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>IS GREEN EARNED?</h1>
+    <p class="dim">The federation map in the public repository <code>Ventusltd/data-federation-map-for-globalgrid2050-all-repos</code> states its own law: unknown is a real state, grey is better than fake green, and every edge has evidence. This page counts the statuses the map publishes and checks each green against the evidence its own rules ask for. Every file is read from GitHub at commit <span class="pin" id="pin">—</span>, the repository's <code>origin/main</code> when this page was built. Statuses are shown in the files' own words, without colour: no colour on this page is a verdict.</p>
+    <p id="summary" class="summary">WAIT — nothing is fetched until you open a section.</p>
+  </header>
+
+  <details class="panel" data-section="rules">
+    <summary><span id="lbl-rules" data-base="The status rules · config/status_rules.json">The status rules · config/status_rules.json [WAIT]</span></summary>
+    <p class="small dim">Each status word and meaning, exactly as the file states it, worst first.</p>
+    <div class="tablewrap"><table><thead><tr><th>status</th><th>label</th><th>meaning, in the file's words</th></tr></thead><tbody id="rules-body"><tr><td colspan="3" class="dim">not yet known</td></tr></tbody></table></div>
+    <p class="small dim" id="rules-evidence">not yet known</p>
+  </details>
+
+  <details class="panel" data-section="counts">
+    <summary><span id="lbl-counts" data-base="Nodes per status · every node file the dashboards read">Nodes per status · every node file the dashboards read [WAIT]</span></summary>
+    <p class="small dim">Counted now from each file. A status word the rules file does not define is counted under its own word and marked "not in status_rules.json". Columns: the root board <code>live_sandbox/federation_control_ledger/data/nodes.json</code> (read by <code>dashboard/federation_radial.html</code> and the live board), the data-federation child scope, the globalgrid2050 contents cartridge (field <code>rag</code>), and the contract table <code>data/federation_map/current/nodes.parquet</code> (field <code>status</code>).</p>
+    <div class="tablewrap"><table><thead><tr><th>status</th><th>root board</th><th>child scope</th><th>contents</th><th>nodes.parquet</th></tr></thead><tbody id="counts-body"><tr><td colspan="5" class="dim">not yet known</td></tr></tbody></table></div>
+    <p class="small dim" id="counts-note"></p>
+  </details>
+
+  <details class="panel" data-section="green">
+    <summary><span id="lbl-green" data-base="Green without evidence">Green without evidence [WAIT]</span></summary>
+    <p class="small dim" id="green-rule">not yet known</p>
+    <div class="tablewrap"><table><thead><tr><th>file</th><th>green nodes</th><th>green without evidence</th><th>node fields in the file</th></tr></thead><tbody id="green-body"><tr><td colspan="4" class="dim">not yet known</td></tr></tbody></table></div>
+    <ul id="green-list" class="plainlist small"></ul>
+  </details>
+
+  <details class="panel" data-section="edges">
+    <summary><span id="lbl-edges" data-base="Edges without evidence">Edges without evidence [WAIT]</span></summary>
+    <p class="small dim">DATA_CONTRACT.md requires <code>evidencePath</code> and <code>evidenceText</code> on every edge. An edge is without evidence when its file has no such field, or the field is empty.</p>
+    <div class="tablewrap"><table><thead><tr><th>file</th><th>edges</th><th>without evidencePath</th><th>without evidenceText</th><th>edge shape</th></tr></thead><tbody id="edges-body"><tr><td colspan="5" class="dim">not yet known</td></tr></tbody></table></div>
+  </details>
+
+  <details class="panel" data-section="inv">
+    <summary><span id="lbl-inv" data-base="Contract invariants · DATA_CONTRACT.md">Contract invariants · DATA_CONTRACT.md [WAIT]</span></summary>
+    <p class="small dim">Each invariant the contract lists, checked where the data allows, against <code>current/nodes.parquet</code> and <code>current/edges.parquet</code> read in this browser. The build's own claim, from <code>reports/json/FEDERATION_MAP_LATEST.json</code>, stands beside it.</p>
+    <div class="tablewrap"><table><thead><tr><th>invariant</th><th>measured here</th><th>build report says</th><th>result</th></tr></thead><tbody id="inv-body"><tr><td colspan="4" class="dim">not yet known</td></tr></tbody></table></div>
+  </details>
+
+  <details class="panel" id="questions">
+    <summary>Questions</summary>
+    <dl>
+      <dt>1. How does this help draw a system or a single-line diagram?</dt>
+      <dd>None yet. The federation map is a map of repositories, not of the grid: it draws no busbar, feeder, transformer, cable route, protection or earthing. What it gives a drawing is a trust check on the repositories that draw one. Nodes in the contents cartridge whose id names a drawing (name-match inference on <code>sld</code>, <code>cable</code>, <code>grid</code>, <code>atlas</code>): <span id="q-draw">not yet known: open Nodes per status.</span></dd>
+      <dt>2. What is the federation map used for?</dt>
+      <dd>To make every repository a node and every dependency an edge with evidence. <code>scripts/build_federation_map.py</code>, run by <code>.github/workflows/gridbot_federation_map_weekly.yml</code>, scans the owner's repositories through GitHub API metadata and writes <code>current/nodes.parquet</code>, <code>current/edges.parquet</code> and weekly snapshots, checked with DuckDB; <code>scripts/publish_federation_json.py</code> writes the JSON reports; <code>dashboard/federation_radial.html</code> and <code>live_sandbox/federation_control_ledger/app.js</code> draw boards from <code>live_sandbox/federation_control_ledger/data/*.json</code>. This page: <code>app.mjs</code> <code>countStatuses</code>, <code>greenWithoutEvidence</code>, <code>edgeEvidence</code>, <code>invariants</code>.
+        <span class="btns"><a class="btn" id="q-code" rel="noopener">CODE</a><a class="btn" id="q-app" rel="noopener">APP</a></span></dd>
+      <dt>3. Where does it lead next?</dt>
+      <dd>To the estate registry, which counts content and dependencies across every repository over time: <a href="../43-registry-growth/">43 · registry growth</a>. And to the spider that walks repositories into the galaxy of code: <a href="../32-spider-and-galaxy/">32 · spider and galaxy</a>.</dd>
+    </dl>
+    <p class="small"><b>Machine detail.</b> Inputs: <code>config/status_rules.json</code> (status words, meanings); <code>DATA_CONTRACT.md</code> (required fields, keys, invariants, read by hand into this page's checks); three node JSON files (<code>properties.status</code>, or <code>rag</code>); three edge JSON files; <code>current/nodes.parquet</code> and <code>current/edges.parquet</code> (zstd, read by hyparquet 1.30.1 with the fzstd 0.1.1 zstd decoder); <code>reports/json/FEDERATION_MAP_LATEST.json</code>. Every unit is a count of rows. Outputs: counts per status word; green nodes with no evidence field or an empty one; edges without evidencePath or evidenceText; invariants as MATCH, DIFFERS or NOT YET KNOWN. Refusals: a file that fails shows FAIL with its reason and every count from it stays not yet known. Names: nodes whose owner is not Ventusltd are counted, their names not displayed. Fetch: one queue of 4, 15 s timeout, one promise per URL, only when a section opens. Source commit: <span class="pin" id="pin2">—</span>.</p>
+  </details>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
