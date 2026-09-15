@@ -1,6 +1,6 @@
 /* layers-panel.mjs — layers over the inherited wafer, in Grid Atlas's grammar.
  *
- * The wafer page (app.mjs, lib.mjs) is inherited unchanged but for one hook.
+ * The wafer page (app.mjs, lib.mjs) is inherited unchanged but for its hooks.
  * This file adds a transparent canvas above it and a panel of layers, and
  * touches nothing the wafer draws. Remove this script tag and the wafer is
  * exactly what it was.
@@ -11,19 +11,53 @@
  * the ground. States follow the Atlas: WAIT until ticked, LOAD while fetching,
  * OK when drawn, EMPTY when loaded with nothing in it, FAIL with its reason.
  *
- * FOLLOWING THE CAMERA. app.mjs exposes exactly one read-only hook,
- * window.__wafer: a getter for its live `view` and a set of `onDraw` listeners
- * it calls at the end of every render(). The overlay registers there, so it
- * repaints in the same frame as the wafer and maps world to screen with the
- * wafer's own formula. An earlier version re-derived only the initial frame and
- * drifted off the points the moment anyone panned; that is what this replaces.
+ * LOADING, AS GRID ATLAS DOES IT (repd_grid_atlasv8/ventus-corev8engine.js:
+ * handleLayerToggle, hydrateLayer, FetchQueue, fetchAndParseGeoJSON,
+ * updateUIState). The first version of this page rebuilt every row, every
+ * element card and the engine panel after every single file, and redrew every
+ * loaded module each time; loading all the module routes that way froze a
+ * phone. Now:
+ *  1. Rows are built once. A state change writes only that row's tag and note.
+ *  2. The engine panel, the element cards, the quantile bands, the URL and the
+ *     overlay are marked dirty and brought up to date at most once per
+ *     animation frame, however many files land in that frame. The element
+ *     cards are only built while the LAYERS list is open.
+ *  3. One FetchQueue(MAX_FETCH) carries all network work; every fetch aborts
+ *     after FETCH_TIMEOUT_MS; one promise per URL is shared, and a failed fetch
+ *     leaves the cache so a retry can happen.
+ *  4. Unticking hides a layer; its data stays in memory unless the feature
+ *     ceiling has to release it (hidden layers only, least recently used).
+ *  5. Each layer's positions are placed once into a Float32Array when it
+ *     loads; a frame only multiplies and adds, and skips routes whose box is
+ *     off screen.
+ *
+ * INFINITE, BUT NOT AT ONCE. There is no "load everything" button. The engine
+ * button loads the module routes with a line in the visible radius band: the
+ * ring of radii the screen covers, because r = sqrt(key). A second press loads
+ * the next ring of the same width outward. Which modules have a line in a ring
+ * is read before fetching from the block register (layers/blocks.json: the
+ * families each block names) and the wafer's family line ranges; a module file
+ * can name more families than that register snapshot, so once a file is loaded
+ * its own keys replace the estimate.
  *
  * TAP TO INSPECT. A tap on the wafer that lands within 14 px of a drawn layer
  * feature shows that feature's properties and its layer's evidence. The wafer
  * still receives the same tap and does whatever it does with it; nothing here
  * captures, prevents or stops the event.
  */
-import { place } from '../../lib.mjs';
+import { placeAll, SPACING } from '../../lib.mjs';
+
+const ROOT = '../../';
+export const MAX_FETCH = 4;
+export const FETCH_TIMEOUT_MS = 15000;
+/* The ceiling on features held in memory, across all layers. Measured in Chrome
+   at 390x844 (software GL), overlay script per frame at the whole-wafer zoom:
+   every module route in engine mode, 2,836 features, 1.4 ms median; the same
+   plus the largest layer, 44,122 features, 5.9 ms median (0.4 ms zoomed in,
+   where off-screen routes are skipped). Roughly linear, so 20,000 features is
+   about 3 ms of script, leaving a phone several times slower inside a frame. */
+export const FEATURE_CAP = 20000;
+export const LOADER = { fetches: 0, flushes: 0, evictions: 0, rowPaints: 0, drawn: 0, drawMs: 0 };
 
 /* ── 400kV ENGINE MODE ──────────────────────────────────────────────────────
  * Every module route is restyled as if it were a transmission line, by a
@@ -37,8 +71,8 @@ import { place } from '../../lib.mjs';
  * is a white substation, its radius the Atlas's interpolate-by-zoom expression
  * evaluated here, with the wafer's zoom level taken as log2 of pixels per unit
  * (one level per doubling, as a web map's zoom is). */
-const ROOT = '../../';
-const engine = { on: true, lines: [], subs: null, why: 'reading the Atlas topology…', bands: [], modules: 0, queue: null };
+const engine = { on: true, lines: [], subs: null, why: 'reading the Atlas topology…', bands: [], modules: 0, queue: null,
+                 ring: null, index: null, indexWhy: '', message: '' };
 
 function evalExpr(e, z) {
   if (!Array.isArray(e)) return e;
@@ -87,7 +121,8 @@ function moduleStats(doc) {
 }
 
 /* Quantile bands, highest voltage first. Band i (of B) starts at the value at
-   quantile (B - 1 - i) / B of the ascending line counts. */
+   quantile (B - 1 - i) / B of the ascending line counts. The arithmetic is the
+   first version's, unchanged; it now runs once per animation frame, not per file. */
 function computeBands() {
   const counts = [];
   for (const l of (manifest?.layers || [])) {
@@ -105,67 +140,24 @@ function computeBands() {
 
 const bandOf = count => engine.bands.find(b => count >= b.min) || engine.bands[engine.bands.length - 1];
 
-const enginePanel = document.createElement('section');
-enginePanel.id = 'engine';
-document.body.appendChild(enginePanel);
-
-function renderEngine() {
-  computeBands();
-  const all = (manifest?.layers || []).filter(isModule);
-  const q = engine.queue;
-  const bands = engine.bands.map(b =>
-    `<div class="eband ethreshold"><span class="esw" style="background:${esc(b.color)};height:${b.width}px"></span>
-     <b style="color:${esc(b.color)}">${esc(b.label)}</b> <span>&ge; ${b.min} lines</span>
-     <span class="dimq">from q${Math.round(b.q * 100)}</span></div>`).join('');
-  enginePanel.innerHTML = `<div class="ehd">ENGINE MODE</div>
-    <div class="emodes"><button type="button" data-m="0" class="${engine.on ? '' : 'on'}">layer colours</button><button type="button" data-m="1" class="${engine.on ? 'on' : ''}">400kV engine</button></div>
-    ${engine.why ? `<div class="dimq">${esc(engine.why)}</div>` : ''}
-    <div id="engineThresholds">${bands || '<div class="dimq">no module routes loaded yet</div>'}</div>
-    <div class="dimq">${engine.modules} of ${all.length} modules loaded · bands by quantile of distinct lines</div>
-    ${engine.subs ? `<div class="eband"><span class="edot"></span> ${esc(engine.subs.label)}: each module's first line</div>` : ''}
-    <button type="button" id="loadAll" ${q ? 'disabled' : ''}>${q ? `LOAD ${q.n}/${q.N}` : 'load all module routes'}</button>`;
-  enginePanel.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => {
-    engine.on = b.dataset.m === '1'; renderEngine(); drawOverlay();
-  }));
-  $('loadAll').addEventListener('click', loadAllModules);
-}
-
-/* Hydrate every module-* layer through a queue of three workers. */
-async function loadAllModules() {
-  if (engine.queue || !manifest) return;
-  const todo = manifest.layers.filter(isModule);
-  const q = engine.queue = { n: 0, N: todo.length };
-  renderEngine();
-  const CONCURRENCY = 3;
-  let next = 0;
-  const worker = async () => {
-    while (next < todo.length) {
-      const l = todo[next++];
-      await toggle(l, true);
-      q.n++; renderEngine();
-    }
-  };
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-  engine.queue = null; renderEngine(); drawOverlay();
-}
-
 const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString('en-GB');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const node = (tag, text, cls) => {
+  const n = document.createElement(tag);
+  if (text != null) n.textContent = String(text);
+  if (cls) n.className = cls;
+  return n;
+};
 
-const state = new Map();   /* id -> {status, doc, why} */
+const state = new Map();   /* id -> {on, status, why, doc, loaded, loading, cache, eng, used, keys} */
 let manifest = null;
 let picked = null;         /* {layer, feature} currently inspected */
+let clock = 0;             /* use order, for least-recently-used release */
 
 const TAP_SLOP = 7;        /* px of movement under which a pointer-up is a tap */
 const PICK_REACH = 14;     /* px within which a tap picks a layer feature */
-
-/* ── the panel ───────────────────────────────────────────────────────────── */
-
-const panel = document.createElement('section');
-panel.id = 'layers';
-panel.innerHTML = `<button id="layersToggle" type="button">LAYERS</button><div id="layersBody" hidden><div id="layersInspect" hidden></div><div id="layersList"></div></div>`;
-document.body.appendChild(panel);
 
 const style = document.createElement('style');
 style.textContent = `
@@ -198,7 +190,7 @@ style.textContent = `
 .ekv{font-size:10.5px;word-break:break-word}.ek{color:#8b93a7}.ev{color:#e7ebf3}
 .eschema{color:#7fd6a2}.enone{color:#b39ddb}
 .elinks{font-size:10.5px;margin-top:.15rem}.elink{color:#5ec8f2}
-#engine{position:fixed;z-index:5;left:.5rem;top:calc(env(safe-area-inset-top,0px) + 2.2rem);max-width:min(17rem,calc(100% - 1rem));
+#engine{position:fixed;z-index:6;left:.5rem;top:calc(env(safe-area-inset-top,0px) + 2.2rem);max-width:min(17rem,calc(100% - 1rem));
   background:#0e121bf4;border:1px solid #1b2030;border-radius:8px;padding:.45rem .6rem;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;color:#e7ebf3}
 #engine .ehd{color:#8b93a7;font-size:10.5px;letter-spacing:.1em}
 #engine .emodes{display:flex;gap:.3rem;margin:.3rem 0}
@@ -209,38 +201,181 @@ style.textContent = `
 #engine .esw{display:inline-block;width:1.6rem}
 #engine .edot{display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:#fff}
 #engine .dimq{color:#8b93a7;font-size:10.5px}
+#engine [hidden]{display:none!important}
+#engine #engineView,#engine #engineMsg{margin-top:.2rem}
 #overlay{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 `;
 document.head.appendChild(style);
+
+
+/* ── batching: everything slower than one row is done once per frame ─────── */
+
+const dirty = { engine: false, cards: false, draw: false, url: false };
+let flushRaf = 0, cardsStale = true;
+function schedule(what) {
+  for (const k of what) dirty[k] = true;
+  if (!flushRaf) flushRaf = requestAnimationFrame(flush);
+}
+function flush() {
+  flushRaf = 0;
+  LOADER.flushes++;
+  const d = { ...dirty };
+  dirty.engine = dirty.cards = dirty.draw = dirty.url = false;
+  if (d.engine) { computeBands(); paintEngine(); }
+  if (d.cards) { if ($('layersBody').hidden) cardsStale = true; else { renderElements(); cardsStale = false; } }
+  if (d.url) writeLayersToURL();
+  if (d.draw || d.engine) {
+    /* While a batch is still arriving, an overlay that is slow to paint on this
+       device is repainted only after eight times its own last paint time has
+       passed, so painting cannot starve the page; the last file always paints. */
+    const wait = engine.queue && LOADER.drawMs > 16 ? LOADER.drawMs * 8 - (performance.now() - lastPaint) : 0;
+    if (wait > 0) { if (!paintTimer) paintTimer = setTimeout(() => { paintTimer = 0; schedule(['draw']); }, wait); }
+    else { lastPaint = performance.now(); drawOverlay(); }
+  }
+}
+let lastPaint = 0, paintTimer = 0;
+
+/* ── the engine panel: built once, its parts re-filled ───────────────────── */
+
+const enginePanel = document.createElement('section');
+enginePanel.id = 'engine';
+enginePanel.innerHTML = `<div class="ehd">ENGINE MODE</div>
+  <div class="emodes"><button type="button" data-m="0">layer colours</button><button type="button" data-m="1">400kV engine</button></div>
+  <div class="dimq" id="engineWhy" hidden></div>
+  <div id="engineThresholds"></div>
+  <div class="dimq" id="engineCount"></div>
+  <div class="eband" id="engineSubs" hidden><span class="edot"></span> <span id="engineSubsLabel"></span></div>
+  <button type="button" id="loadAll">load the module routes in view</button>
+  <div class="dimq" id="engineView"></div>
+  <div class="dimq" id="engineMsg" hidden></div>`;
+document.body.appendChild(enginePanel);
+enginePanel.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => {
+  engine.on = b.dataset.m === '1'; schedule(['engine', 'draw']);
+}));
+
+const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
+let lastThresholds = null;
+
+function paintEngine() {
+  const all = (manifest?.layers || []).filter(isModule);
+  const [m0, m1] = enginePanel.querySelectorAll('[data-m]');
+  m0.className = engine.on ? '' : 'on'; m1.className = engine.on ? 'on' : '';
+  setText($('engineWhy'), engine.why); $('engineWhy').hidden = !engine.why;
+  const bands = engine.bands.map(b =>
+    `<div class="eband ethreshold"><span class="esw" style="background:${esc(b.color)};height:${b.width}px"></span>
+     <b style="color:${esc(b.color)}">${esc(b.label)}</b> <span>&ge; ${b.min} lines</span>
+     <span class="dimq">from q${Math.round(b.q * 100)}</span></div>`).join('') || '<div class="dimq">no module routes loaded yet</div>';
+  if (bands !== lastThresholds) { $('engineThresholds').innerHTML = bands; lastThresholds = bands; }
+  setText($('engineCount'), `${engine.modules} of ${all.length} modules loaded · bands by quantile of distinct lines`);
+  if (engine.subs) { setText($('engineSubsLabel'), `${engine.subs.label}: each module's first line`); $('engineSubs').hidden = false; }
+  paintLoadState();
+}
+
+/* The button, the in-view count, the rule and the ceiling, from the live state. */
+function paintLoadState() {
+  const btn = $('loadAll'), q = engine.queue;
+  const ring = viewRing();
+  let label;
+  if (q) label = `LOAD ${q.n}/${q.N}`;
+  else if (engine.ring && ring && engine.ring.sig === ring.sig && engine.ring.k > 0) {
+    const [a, b] = ringBand(ring, engine.ring.k);
+    label = a > ring.rmax ? 'every band is loaded'
+      : `load the next band outward (radius ${Math.round(a)}–${Math.round(Math.min(b, ring.rmax))})`;
+  } else label = 'load the module routes in view';
+  setText(btn, label);
+  btn.disabled = !!q;
+  let viewLine;
+  if (!engine.index) viewLine = engine.indexWhy || 'which modules are in view is read from the block register on the first press';
+  else if (!ring) viewLine = 'the wafer has not framed itself yet';
+  else {
+    let M = 0, N = 0;
+    for (const l of manifest.layers) {
+      if (!isModule(l) || !anyKeyIn(moduleKeys(l), ring.k0, ring.k1)) continue;
+      M++;
+      if (state.get(l.id).loaded) N++;
+    }
+    viewLine = `${N} of ${M} modules in view loaded · radius ${Math.round(ring.r0)}–${Math.round(Math.min(ring.r1, ring.rmax))} on screen`;
+  }
+  setText($('engineView'), `${viewLine} · ${fmt(heldFeatures())} of ${fmt(FEATURE_CAP)} features held`);
+  setText($('layersRule'), `LOADING RULE: the engine button loads the module routes with a line in the ring of radii on screen ` +
+    `(r = sqrt(key)); a second press loads the next ring of the same width outward. ${MAX_FETCH} fetches at a time, ` +
+    `each abandoned after ${FETCH_TIMEOUT_MS / 1000} s. Features held in memory are capped at ${fmt(FEATURE_CAP)}; ` +
+    `beyond it hidden layers are released, least recently used first, and a module that still does not fit is not loaded, with the reason on its row.`);
+  setText($('engineMsg'), engine.message); $('engineMsg').hidden = !engine.message;
+  unCover();
+}
+
+/* ── the panel of layers: rows built once ────────────────────────────────── */
+
+const panel = document.createElement('section');
+panel.id = 'layers';
+panel.innerHTML = `<button id="layersToggle" type="button">LAYERS</button><div id="layersBody" hidden><div id="layersInspect" hidden></div><div id="layersRule" class="lnote" style="margin-left:0"></div><div id="layersList"></div></div>`;
+document.body.appendChild(panel);
 
 const overlay = document.createElement('canvas');
 overlay.id = 'overlay';
 document.body.appendChild(overlay);
 const ctx = overlay.getContext('2d');
 
-$('layersToggle').addEventListener('click', () => { $('layersBody').hidden = !$('layersBody').hidden; });
+$('layersToggle').addEventListener('click', () => { $('layersBody').hidden = !$('layersBody').hidden; bodyOpened(); });
+$('loadAll').addEventListener('click', loadInView);
 
-function row(l) {
-  const s = state.get(l.id) || { status: 'WAIT' };
-  const why = s.why ? ` · ${esc(s.why)}` : '';
-  const stat = s.doc?.stats ? ` · ${esc(JSON.stringify(s.doc.stats).slice(0, 80))}` : '';
-  return `<div class="lrow"><input type="checkbox" id="L-${esc(l.id)}" ${s.on ? 'checked' : ''}>
-    <label class="lname" for="L-${esc(l.id)}" style="color:${esc(l.colour)}">${esc(l.label)}
-    <span class="ltag ${s.status}">[${s.status}]</span></label></div>
-    <div class="lnote">${esc(l.evidence)}${why}${s.status === 'OK' ? stat : ''}</div>`;
+function bodyOpened() {
+  if ($('layersBody').hidden) return;
+  if (cardsStale) { renderElements(); cardsStale = false; }
+  unCover();
 }
 
-function renderPanel() {
-  if (!manifest) return;
-  const groups = [...new Set(manifest.layers.map(l => l.group))];
-  $('layersList').innerHTML = groups.map(g =>
-    `<div class="lgroup">${esc(g)}</div>` + manifest.layers.filter(l => l.group === g).map(row).join('')
-  ).join('') + `<div class="lnote">substrate ${esc(manifest.substrate)} · frozen · layers built ${esc(manifest.built_utc)}</div>`;
+/* The LAYERS list must never sit over the engine panel and its load button: on
+   a narrow screen both panels share the top of the page, so the list is pushed
+   below the engine panel and its height is kept inside the window. */
+function unCover() {
+  const body = $('layersBody');
+  if (body.hidden) return;
+  body.style.position = 'relative'; body.style.top = ''; body.style.maxHeight = '';
+  const e = enginePanel.getBoundingClientRect(), b = body.getBoundingClientRect();
+  let shift = 0;
+  if (b.left < e.right && b.right > e.left && b.top < e.bottom + 4) shift = Math.ceil(e.bottom - b.top + 8);
+  body.style.top = shift + 'px';
+  const top = b.top + shift;
+  body.style.maxHeight = Math.max(140, Math.min(innerHeight * 0.6, innerHeight - top - 150)) + 'px';
+}
+if (typeof ResizeObserver === 'function') new ResizeObserver(() => unCover()).observe(enginePanel);
+window.addEventListener('resize', unCover);
+
+const rows = new Map();    /* id -> {input, tag, note} */
+
+function buildRows() {
+  const frag = document.createDocumentFragment();
+  let group = null;
   for (const l of manifest.layers) {
-    $('L-' + l.id).addEventListener('change', e => toggle(l, e.target.checked));
+    if (l.group !== group) { group = l.group; frag.appendChild(node('div', group, 'lgroup')); }
+    const r = node('div', null, 'lrow');
+    const input = node('input'); input.type = 'checkbox'; input.id = 'L-' + l.id;
+    const label = node('label', l.label + ' ', 'lname'); label.htmlFor = input.id; label.style.color = l.colour;
+    const tag = node('span', '[WAIT]', 'ltag WAIT');
+    label.appendChild(tag);
+    r.append(input, label);
+    const note = node('div', l.evidence, 'lnote');
+    frag.append(r, note);
+    input.addEventListener('change', () => toggle(l, input.checked));
+    rows.set(l.id, { input, tag, note });
   }
-  renderElements(manifest, state);
-  renderEngine();
+  frag.appendChild(node('div', `substrate ${manifest.substrate} · frozen · layers built ${manifest.built_utc}`, 'lnote'));
+  $('layersList').replaceChildren(frag);
+}
+
+function paintRow(l) {
+  const s = state.get(l.id), r = rows.get(l.id);
+  if (!r) return;
+  LOADER.rowPaints++;
+  const word = s.status.split(' ')[0];
+  if (r.tag.textContent !== `[${s.status}]`) { r.tag.textContent = `[${s.status}]`; r.tag.className = 'ltag ' + word; }
+  let note = l.evidence ?? '';
+  if (s.why) note += ' · ' + s.why;
+  if (s.status === 'OK' && s.doc?.stats) note += ' · ' + JSON.stringify(s.doc.stats).slice(0, 80);
+  if (r.note.textContent !== note) r.note.textContent = note;
+  if (r.input.checked !== !!s.on) r.input.checked = !!s.on;
 }
 
 /* ── ELEMENT: what a consumer of a module meets ─────────────────────────────
@@ -251,16 +386,11 @@ function renderPanel() {
    textContent only; nothing from a dataset is ever parsed as HTML. */
 const ENGINE_LIVE = 'https://ventusltd.github.io/ventus-grid-engine/';
 
-function renderElements(manifest, state) {
+function renderElements() {
   const body = $('layersBody');
   if (!body || !manifest) return;
   $('layersElements')?.remove();
-  const el = (tag, cls, text) => {
-    const n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text != null) n.textContent = String(text);
-    return n;
-  };
+  const el = (tag, cls, text) => node(tag, text, cls);
   const link = (href, text) => {
     const a = el('a', 'elink', text);
     a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
@@ -309,58 +439,248 @@ function renderElements(manifest, state) {
   body.appendChild(sec);
 }
 
-async function toggle(l, on) {
-  const s = state.get(l.id) || { status: 'WAIT' };
-  s.on = on; state.set(l.id, s);
-  writeLayersToURL();
-  if (on && !s.doc && !s.loading) {
-    s.loading = true; s.why = '';
-    s.status = 'LOAD'; renderPanel();
-    try {
-      if (l.tiles) s.doc = await hydrateTiles(l, s);
-      else {
-        const r = await fetch(ROOT + l.file, { cache: 'default' });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        s.doc = await r.json();
-      }
-      s.status = s.doc.features.length ? 'OK' : 'EMPTY';
-      if (!s.doc.features.length) s.why = 'loaded; the layer holds no features';
-    } catch (e) { s.status = 'FAIL'; s.why = e.message; }
-    s.loading = false;
+/* ── the fetch queue and the shared URL cache ────────────────────────────── */
+
+class FetchQueue {
+  constructor(n) { this.n = n; this.active = 0; this.waiting = []; }
+  async add(task) {
+    if (this.active >= this.n) await new Promise(res => this.waiting.push(res));
+    this.active++;
+    try { return await task(); }
+    finally { this.active--; if (this.waiting.length) this.waiting.shift()(); }
   }
-  if (!on && picked?.layer.id === l.id) inspect(null);
-  renderPanel(); drawOverlay();
+}
+const queue = new FetchQueue(MAX_FETCH);
+const urlCache = new Map();   /* url -> promise of parsed JSON */
+
+function fetchJSON(url) {
+  if (urlCache.has(url)) return urlCache.get(url);
+  const p = queue.add(async () => {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
+    LOADER.fetches++;
+    try {
+      const r = await fetch(url, { signal: ctl.signal, cache: 'default' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } catch (e) {
+      throw e.name === 'AbortError' ? new Error(`no answer within ${FETCH_TIMEOUT_MS / 1000} s`) : e;
+    } finally { clearTimeout(timer); }
+  });
+  urlCache.set(url, p);
+  p.catch(() => urlCache.delete(url));
+  return p;
 }
 
-/* A tiled layer is split by radius band (build/tile_layer.py): because r = sqrt(key),
-   band b is the key range [(b*S)^2, ((b+1)*S)^2). For now every band is fetched up
-   front, but as separate requests, so the panel can count them in (LOAD n/N) and a
-   later version can fetch only the bands in view. The assembled doc is identical in
-   shape to the whole-file layer, so drawing does not know the difference. */
-async function hydrateTiles(l, s) {
-  const r = await fetch(ROOT + l.tiles, { cache: 'default' });
-  if (!r.ok) throw new Error('tile index HTTP ' + r.status);
-  const index = await r.json();
-  const bands = index.bands || [];
-  const N = bands.length;
+/* ── the ceiling, and what is released to stay under it ──────────────────── */
+
+function heldFeatures() {
   let n = 0;
-  s.status = `LOAD ${n}/${N}`; renderPanel();
-  const parts = await Promise.all(bands.map(async b => {
-    const t = await fetch(ROOT + b.file, { cache: 'default' });
-    if (!t.ok) throw new Error(`band ${b.band} HTTP ${t.status}`);
-    const doc = await t.json();
-    if (doc.features.length !== b.features)
-      throw new Error(`band ${b.band} holds ${doc.features.length} features, index says ${b.features}`);
-    n++; s.status = `LOAD ${n}/${N}`; renderPanel();
-    return doc.features;
-  }));
-  const features = parts.flat();
-  if (index.source && features.length !== index.source.features)
-    throw new Error(`tiles hold ${features.length} features, source had ${index.source.features}`);
-  return {
-    type: 'CodeFeatureCollection', substrate: index.substrate, layer: index.layer,
-    provenance: index.provenance, stats: { features: features.length, bands: N }, features,
-  };
+  if (!manifest) return n;
+  for (const l of manifest.layers) {
+    const s = state.get(l.id);
+    if (s.loaded && s.doc) n += s.doc.features.length;
+    else if (s.loading) n += Number(l.features) || 0;
+  }
+  return n;
+}
+
+/* Frees hidden layers, least recently used first, until `need` more features
+   fit. Nothing ticked is ever released. Returns false when that is not enough. */
+function makeRoom(need) {
+  while (heldFeatures() + need > FEATURE_CAP) {
+    let victim = null, oldest = Infinity;
+    for (const l of manifest.layers) {
+      const s = state.get(l.id);
+      if (!s.on && s.loaded && s.doc?.features.length && s.used < oldest) { oldest = s.used; victim = l; }
+    }
+    if (!victim) return false;
+    const s = state.get(victim.id);
+    urlCache.delete(ROOT + victim.file);
+    s.doc = null; s.cache = null; s.eng = null; s.keys = null; s.loaded = false; s.status = 'WAIT';
+    s.why = 'released from memory at the feature ceiling; fetched again if ticked';
+    LOADER.evictions++;
+    paintRow(victim);
+    schedule(['engine', 'cards', 'draw']);
+  }
+  return true;
+}
+
+/* ── positions placed once per layer ─────────────────────────────────────── */
+
+/* Every key of every feature, in feature order, placed once. A feature is a
+   run [start, start + len) of that array with its world bounding box. */
+function buildCache(doc) {
+  const F = doc.features.length;
+  let n = 0;
+  for (const f of doc.features) {
+    const g = f.geometry;
+    if (g.type === 'Point') n += 1; else if (g.type === 'LineString') n += g.keys.length;
+  }
+  const keys = new Uint32Array(n), start = new Int32Array(F), len = new Int32Array(F), type = new Uint8Array(F);
+  let j = 0;
+  doc.features.forEach((f, i) => {
+    const g = f.geometry;
+    start[i] = j;
+    if (g.type === 'Point') { keys[j++] = g.key; len[i] = 1; type[i] = 1; }
+    else if (g.type === 'LineString') { for (const k of g.keys) keys[j++] = k; len[i] = g.keys.length; type[i] = 2; }
+  });
+  const pos = placeAll(keys);
+  const box = new Float32Array(F * 4);
+  for (let i = 0; i < F; i++) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let v = start[i]; v < start[i] + len[i]; v++) {
+      const x = pos[v * 2], y = pos[v * 2 + 1];
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    box[i * 4] = x0; box[i * 4 + 1] = y0; box[i * 4 + 2] = x1; box[i * 4 + 3] = y1;
+  }
+  return { pos, start, len, type, box, F };
+}
+
+/* ── hydrating one layer ─────────────────────────────────────────────────── */
+
+async function hydrate(l, s) {
+  if (s.loaded || s.loading) return;
+  makeRoom(Number(l.features) || 0);          /* a reader's own tick is never refused */
+  s.loading = true; s.why = ''; s.status = 'LOAD'; paintRow(l);
+  try {
+    const doc = await fetchJSON(ROOT + l.file);
+    s.doc = doc; s.loaded = true; s.keys = null;
+    s.cache = buildCache(doc);
+    if (isModule(l)) s.eng = moduleStats(doc);
+    s.status = doc.features.length ? 'OK' : 'EMPTY';
+    if (!doc.features.length) s.why = 'loaded; the layer holds no features';
+  } catch (e) { s.status = 'FAIL'; s.why = e.message; }
+  s.loading = false;
+  paintRow(l);
+  schedule(['engine', 'cards', 'draw']);
+}
+
+function toggle(l, on) {
+  const s = state.get(l.id);
+  s.on = on;
+  if (on) { s.used = ++clock; hydrate(l, s); }
+  else if (picked?.layer.id === l.id) inspect(null);
+  paintRow(l);
+  schedule(['url', 'cards', 'draw', 'engine']);
+}
+
+/* ── which module routes are in view ─────────────────────────────────────── */
+
+/* The ring of radii the screen covers: the rectangle's nearest and farthest
+   distance from the wafer's centre. Its keys are [(r0/S)^2, (r1/S)^2]. */
+function viewRing() {
+  const v = liveView();
+  if (!v || !v.w || !v.zoom || !engine.index) return null;
+  const hw = v.w / 2 / v.zoom, hh = v.h / 2 / v.zoom, ax = Math.abs(v.x), ay = Math.abs(v.y);
+  const r0 = Math.hypot(Math.max(ax - hw, 0), Math.max(ay - hh, 0)), r1 = Math.hypot(ax + hw, ay + hh);
+  return { r0, r1, rmax: engine.index.rmax, k0: (r0 / SPACING) ** 2, k1: (r1 / SPACING) ** 2, sig: `${Math.round(r0)}:${Math.round(r1)}` };
+}
+const ringBand = (ring, k) => { const w = Math.max(ring.r1 - ring.r0, 1); return [ring.r0 + k * w, ring.r0 + (k + 1) * w]; };
+
+const EMPTY_KEYS = new Uint32Array(0);
+/* A module's keys, sorted: its own file's once loaded, else the register estimate. */
+function moduleKeys(l) {
+  const s = state.get(l.id);
+  if (s.loaded && s.doc) {
+    if (!s.keys) {
+      const set = new Set();
+      for (const f of s.doc.features) { const g = f.geometry; if (g.type === 'Point') set.add(g.key); else if (g.type === 'LineString') for (const k of g.keys) set.add(k); }
+      s.keys = Uint32Array.from(set).sort();
+    }
+    return s.keys;
+  }
+  return engine.index.keys.get(l.id.slice('module-'.length)) || EMPTY_KEYS;
+}
+
+function anyKeyIn(a, lo, hi) {
+  let i = 0, j = a.length;
+  while (i < j) { const m = (i + j) >> 1; if (a[m] < lo) i = m + 1; else j = m; }
+  return i < a.length && a[i] <= hi;
+}
+
+/* The register estimate: layers/blocks.json names each block's families; the
+   wafer's family index gives each family's numbered lines. */
+async function readRegisterIndex() {
+  if (engine.index) return true;
+  engine.indexWhy = 'reading the block register and waiting for the family index…'; paintLoadState();
+  try {
+    const famP = window.__wafer?.families ? Promise.resolve(window.__wafer.families) : new Promise((res, rej) => {
+      addEventListener('wafer:families', e => e.detail?.error ? rej(new Error(e.detail.error)) : res(window.__wafer.families), { once: true });
+    });
+    const [blocks, fam] = await Promise.all([fetchJSON(ROOT + 'layers/blocks.json'), famP]);
+    const byN = new Map();
+    for (const f of fam.families) byN.set(f.n, f);
+    const famsOf = new Map();
+    for (const f of blocks.features) {
+      const b = f.properties?.block, n = f.properties?.family;
+      if (b == null || n == null) continue;
+      (famsOf.get(b) || famsOf.set(b, new Set()).get(b)).add(n);
+    }
+    const keys = new Map();
+    let kmax = 0;
+    for (const [b, ns] of famsOf) {
+      const set = new Set();
+      for (const n of ns) {
+        const f = byN.get(n);
+        if (!f) continue;
+        for (let j = f.lineOffset; j < f.lineOffset + f.lineCount; j++) set.add(fam.famLines[j]);
+      }
+      const arr = Uint32Array.from(set).sort();
+      if (arr.length && arr[arr.length - 1] > kmax) kmax = arr[arr.length - 1];
+      keys.set(b, arr);
+    }
+    engine.index = { keys, rmax: SPACING * Math.sqrt(kmax) };
+    engine.indexWhy = '';
+    return true;
+  } catch (e) {
+    engine.indexWhy = 'which modules are in view could not be established: ' + e.message;
+    paintLoadState();
+    return false;
+  }
+}
+
+async function loadInView() {
+  if (engine.queue || !manifest) return;
+  engine.message = '';
+  if (!await readRegisterIndex()) return;
+  const ring = viewRing();
+  if (!ring) return;
+  if (!engine.ring || engine.ring.sig !== ring.sig) engine.ring = { sig: ring.sig, k: 0 };
+  const mods = manifest.layers.filter(isModule);
+  let todo = [];
+  for (;;) {
+    const band = ringBand(ring, engine.ring.k);
+    if (band[0] > ring.rmax) break;
+    const lo = (band[0] / SPACING) ** 2, hi = (band[1] / SPACING) ** 2;
+    todo = mods.filter(l => { const s = state.get(l.id); return !s.loaded && !s.loading && anyKeyIn(moduleKeys(l), lo, hi); });
+    if (todo.length) break;
+    engine.ring.k++;
+  }
+  if (!todo.length) {
+    engine.message = 'every module with a line from this view outward is loaded';
+    schedule(['engine']); return;
+  }
+  const q = engine.queue = { n: 0, N: todo.length };
+  let refused = 0;
+  const jobs = [];
+  for (const l of todo) {
+    const s = state.get(l.id), want = Number(l.features) || 0;
+    if (!makeRoom(want)) {
+      refused++;
+      s.why = `in view, not loaded: its ${fmt(want)} features would take memory above the ${fmt(FEATURE_CAP)}-feature ceiling; untick a layer or zoom in`;
+      paintRow(l); continue;
+    }
+    s.on = true; s.used = ++clock;
+    jobs.push(hydrate(l, s).then(() => { q.n++; schedule(['engine']); }));
+  }
+  schedule(['engine', 'url']);
+  await Promise.all(jobs);
+  engine.ring.k++;
+  engine.queue = null;
+  engine.message = refused ? `${refused} module(s) in this band were not loaded: the feature ceiling was reached` : '';
+  schedule(['engine', 'cards', 'draw', 'url']);
 }
 
 /* ── the URL: ?layers=engine,declared ─────────────────────────────────────── */
@@ -389,25 +709,41 @@ function readLayersFromURL() {
   for (const id of wanted) toggle(known.get(id), true);
 }
 
-/* ── drawing: follow the wafer's frame ───────────────────────────────────── */
-
 /* ── the camera: the wafer's own, read live ──────────────────────────────── */
 
 const liveView = () => window.__wafer?.view ?? null;
 
-/* The wafer's formula, exactly: see drawMarks() and nearestKeyAt() in app.mjs. */
-const toScreen = (v, [x, y]) => [(x - v.x) * v.zoom + v.w / 2, v.h / 2 - (y - v.y) * v.zoom];
-
 function* visibleLayers() {
   for (const l of (manifest?.layers || [])) {
     const s = state.get(l.id);
-    if (s?.on && s.status === 'OK') yield [l, s.doc];
+    if (s?.on && s.status === 'OK' && s.cache) yield [l, s];
   }
 }
 
-/* ── drawing ─────────────────────────────────────────────────────────────── */
+/* ── drawing: the wafer's formula, x * zoom + offset, from placed positions ── */
+
+/* One feature's route. Skipped when its box is more than `pad` px off screen;
+   otherwise drawn exactly as the first version drew it, one path per feature. */
+function strokeRoute(c, i, v, z, ox, oy, pad) {
+  const b = c.box, bi = i * 4;
+  if (b[bi + 2] * z + ox < -pad || b[bi] * z + ox > v.w + pad || oy - b[bi + 3] * z < -pad || oy - b[bi + 1] * z > v.h + pad) return;
+  const p = c.pos, s0 = c.start[i], n = c.len[i];
+  ctx.beginPath();
+  for (let k = 0; k < n; k++) {
+    const x = p[(s0 + k) * 2] * z + ox, y = oy - p[(s0 + k) * 2 + 1] * z;
+    k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.stroke();
+  LOADER.drawn++;
+}
 
 function drawOverlay() {
+  const t0 = performance.now();
+  paintOverlay();
+  LOADER.drawMs = performance.now() - t0;
+}
+
+function paintOverlay() {
   const v = liveView();
   if (!v || !v.w || !v.h) return;          /* the wafer has not framed itself yet */
   const dpr = v.dpr || 1;
@@ -415,51 +751,44 @@ function drawOverlay() {
   if (overlay.width !== W || overlay.height !== H) { overlay.width = W; overlay.height = H; }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, v.w, v.h);
-  const S = p => toScreen(v, p);
+  const z = v.zoom, ox = v.w / 2 - v.x * z, oy = v.h / 2 + v.y * z;
 
   const engineOn = engine.on && engine.bands.length;
-  for (const [l, doc] of visibleLayers()) {
+  for (const [l, s] of visibleLayers()) {
     if (engineOn && isModule(l)) continue;
+    const c = s.cache;
     ctx.strokeStyle = l.colour; ctx.fillStyle = l.colour;
     ctx.globalAlpha = l.draws === 'lines' ? 0.55 : 0.8;
     ctx.lineWidth = 1;
-    for (const f of doc.features) {
-      const g = f.geometry;
-      if (g.type === 'Point') {
-        const [x, y] = S(place(g.key));
+    for (let i = 0; i < c.F; i++) {
+      if (c.type[i] === 1) {
+        const j = c.start[i], x = c.pos[j * 2] * z + ox, y = oy - c.pos[j * 2 + 1] * z;
         if (x < -2 || y < -2 || x > v.w + 2 || y > v.h + 2) continue;
         ctx.fillRect(x - 1, y - 1, 2, 2);
-      } else if (g.type === 'LineString') {
-        ctx.beginPath();
-        g.keys.forEach((k, i) => { const [x, y] = S(place(k)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-        ctx.stroke();
-      }
+      } else if (c.type[i] === 2) strokeRoute(c, i, v, z, ox, oy, 2);
     }
     ctx.globalAlpha = 1;
   }
 
   if (engineOn) {
-    const mods = [...visibleLayers()].filter(([l]) => isModule(l))
-      .map(([l, doc]) => { const st = state.get(l.id); st.eng ??= moduleStats(doc); return [doc, st.eng]; });
+    const mods = [];
+    for (const [l, s] of visibleLayers()) if (isModule(l)) { s.eng ??= moduleStats(s.doc); mods.push(s); }
     ctx.globalAlpha = 0.9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const band of [...engine.bands].reverse()) {      /* 66kV first, 400kV on top */
       ctx.strokeStyle = band.color; ctx.lineWidth = band.width;
-      for (const [doc, st] of mods) {
-        if (bandOf(st.count) !== band) continue;
-        for (const f of doc.features) {
-          if (f.geometry.type !== 'LineString') continue;
-          ctx.beginPath();
-          f.geometry.keys.forEach((k, i) => { const [x, y] = S(place(k)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-          ctx.stroke();
-        }
+      for (const s of mods) {
+        if (bandOf(s.eng.count) !== band) continue;
+        const c = s.cache;
+        for (let i = 0; i < c.F; i++) if (c.type[i] === 2) strokeRoute(c, i, v, z, ox, oy, band.width + 2);
       }
     }
     if (engine.subs) {
       const r = evalExpr(engine.subs.radius, Math.log2(v.zoom));
       ctx.globalAlpha = 0.85; ctx.fillStyle = engine.subs.color; ctx.strokeStyle = '#0b0d12'; ctx.lineWidth = 0.6;
-      for (const [, st] of mods) {
-        if (!Number.isFinite(st.first)) continue;
-        const [x, y] = S(place(st.first));
+      for (const s of mods) {
+        if (!Number.isFinite(s.eng.first)) continue;
+        s.eng.xy ??= placeAll([s.eng.first]);
+        const x = s.eng.xy[0] * z + ox, y = oy - s.eng.xy[1] * z;
         if (x < -r || y < -r || x > v.w + r || y > v.h + r) continue;
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       }
@@ -470,18 +799,26 @@ function drawOverlay() {
   if (picked) {
     const g = picked.feature.geometry;
     ctx.strokeStyle = picked.layer.colour; ctx.lineWidth = 1.4;
-    for (const k of (g.type === 'Point' ? [g.key] : g.keys)) {
-      const [x, y] = S(place(k));
-      ctx.beginPath(); ctx.arc(x, y, 7, 0, 6.2832); ctx.stroke();
+    const ks = g.type === 'Point' ? [g.key] : g.keys;
+    const p = placeAll(ks);
+    for (let i = 0; i < ks.length; i++) {
+      ctx.beginPath(); ctx.arc(p[i * 2] * z + ox, oy - p[i * 2 + 1] * z, 7, 0, 6.2832); ctx.stroke();
     }
   }
 }
 
-window.__wafer?.onDraw.add(drawOverlay);
+/* The in-view count follows the camera, and costs nothing while the ring is unchanged. */
+let lastRingSig = '';
+window.__wafer?.onDraw.add(() => {
+  drawOverlay();
+  if (!engine.index) return;
+  const r = viewRing(), sig = r ? r.sig : '';
+  if (sig !== lastRingSig) { lastRingSig = sig; paintLoadState(); }
+});
 
 /* ── tap to inspect ──────────────────────────────────────────────────────── */
 
-function segDist2(px, py, [ax, ay], [bx, by]) {
+function segDist2(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
   const t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0;
   const qx = ax + t * dx - px, qy = ay + t * dy - py;
@@ -492,31 +829,27 @@ function segDist2(px, py, [ax, ay], [bx, by]) {
 function pickAt(cx, cy) {
   const v = liveView();
   if (!v || !v.zoom) return null;
+  const z = v.zoom, ox = v.w / 2 - v.x * z, oy = v.h / 2 + v.y * z;
   let best = null, bestD = PICK_REACH * PICK_REACH;
-  for (const [l, doc] of visibleLayers()) {
-    for (const f of doc.features) {
-      const g = f.geometry;
-      let d = Infinity;
-      if (g.type === 'Point') {
-        const [x, y] = toScreen(v, place(g.key));
-        d = (x - cx) ** 2 + (y - cy) ** 2;
-      } else if (g.type === 'LineString' && g.keys.length) {
-        const pts = g.keys.map(k => toScreen(v, place(k)));
-        d = segDist2(cx, cy, pts[0], pts[0]);
-        for (let i = 1; i < pts.length; i++) d = Math.min(d, segDist2(cx, cy, pts[i - 1], pts[i]));
+  for (const [l, s] of visibleLayers()) {
+    const c = s.cache;
+    for (let i = 0; i < c.F; i++) {
+      if (!c.len[i]) continue;
+      const j0 = c.start[i];
+      let px = c.pos[j0 * 2] * z + ox, py = oy - c.pos[j0 * 2 + 1] * z;
+      let d = (px - cx) ** 2 + (py - cy) ** 2;
+      if (c.type[i] === 2) {
+        for (let k = 1; k < c.len[i]; k++) {
+          const x = c.pos[(j0 + k) * 2] * z + ox, y = oy - c.pos[(j0 + k) * 2 + 1] * z;
+          d = Math.min(d, segDist2(cx, cy, px, py, x, y));
+          px = x; py = y;
+        }
       }
-      if (d < bestD) { bestD = d; best = { layer: l, feature: f }; }
+      if (d < bestD) { bestD = d; best = { layer: l, feature: s.doc.features[i] }; }
     }
   }
   return best;
 }
-
-const node = (tag, text, cls) => {
-  const n = document.createElement(tag);
-  if (text != null) n.textContent = String(text);
-  if (cls) n.className = cls;
-  return n;
-};
 
 /* Dataset text only ever reaches the page through textContent. */
 function inspect(hit) {
@@ -539,6 +872,7 @@ function inspect(hit) {
   box.append(close, h, where, dl, ev);
   box.hidden = false;
   $('layersBody').hidden = false;
+  bodyOpened();
   drawOverlay();
 }
 
@@ -571,16 +905,21 @@ function inspect(hit) {
   document.addEventListener('pointercancel', end);
 }
 
+/* Read-only counters for tests. */
+window.__layers04 = Object.freeze({ LOADER, FEATURE_CAP, MAX_FETCH, held: () => heldFeatures(), busy: () => !!engine.queue });
+
 (async () => {
+  schedule(['engine']);
   try {
     const r = await fetch(ROOT + 'layers/manifest.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error('layers/manifest.json returned HTTP ' + r.status);
     manifest = await r.json();
     try { await readAtlasTopology(); } catch (e) { engine.why = 'Atlas topology unavailable: ' + e.message; engine.on = false; }
-    for (const l of manifest.layers) state.set(l.id, { status: 'WAIT', on: false });
-    renderPanel();
+    for (const l of manifest.layers) state.set(l.id, { status: 'WAIT', on: false, why: '', loaded: false, loading: false, doc: null, cache: null, eng: null, used: 0, keys: null });
+    buildRows();
+    schedule(['engine', 'cards']);
     readLayersFromURL();
   } catch (e) {
-    $('layersList').innerHTML = `<div class="lnote">Layers unavailable: ${esc(e.message)}. The wafer itself is unaffected.</div>`;
+    $('layersList').replaceChildren(node('div', `Layers unavailable: ${e.message}. The wafer itself is unaffected.`, 'lnote'));
   }
 })();
