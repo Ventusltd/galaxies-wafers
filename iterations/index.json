@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 28,
+ "count": 29,
  "iterations": [
   {
    "n": 1,
@@ -227,6 +227,15 @@
    "commit": "db9e680ae8828dd984f0dfa69d5604359eaa3531",
    "committed": "2026-09-15T20:13:08+01:00",
    "subject": "27, 28, 29: narrow four claims to what the pages actually do (Codex numerical review)"
+  },
+  {
+   "n": 30,
+   "dir": "30-journey",
+   "slug": "journey",
+   "title": "Journey — follow one thread through the Line Wafer, level by level",
+   "commit": "2c50ced50ef08b193a36dbb69007c66370e250b4",
+   "committed": "2026-09-15T20:30:36+01:00",
+   "subject": "iteration 30 journey: the wafer by level of detail, and one thread followed stop by stop"
   },
   {
    "n": 31,
