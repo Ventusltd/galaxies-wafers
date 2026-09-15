@@ -401,7 +401,7 @@ function paint1() {
     ['input', `family key family:${fam.n}${S.ringLine >= 0 ? `, reached from line:${S.ringLine}` : ''}`],
     ['read', `families.json record: lineOffset ${fam.lineOffset}, lineCount ${fam.lineCount} → lines.bin entries ${fam.lineOffset} to ${fam.lineOffset + fam.lineCount - 1} (little-endian uint32 keys)`],
     ['output', `${fmt(seq.length)} line occurrences, ${fmt(distinct)} distinct lines; ${endpoints}`],
-    ['drawn', `ground ${fmt(wafer.groundN)} dark keys (GPU, one buffer); lit ${fmt(wafer.litN)} keys (one buffer, refilled per function); run keys on screen now ${fmt(wafer.drawnLit)}; median frame ${median(wafer.frames).toFixed(2)} ms`],
+    ['drawn', `ground ${fmt(wafer.groundN)} dark keys (GPU, one buffer); lit ${fmt(wafer.litN)} keys (one buffer, refilled per function); run line ${wafer.gl ? `${fmt(wafer.runSegs)} segments (GPU, one buffer, refilled per function)` : 'stroked on the 2D overlay (no WebGL)'}; run keys on screen now ${fmt(wafer.drawnLit)}; median frame ${median(wafer.frames).toFixed(2)} ms`],
     ['placement', 'r = sqrt(key), theta = key x golden angle (lib.mjs place)'],
     ['catalogue record', cat ? `${cat.key} · ${cat.lines} lines · ${cat.category || 'no category'} · block ${cat.block}` : 'none (10 lines or fewer)'],
     ['sources', `numbered database ${DATA} (bytes checked against catalogue provenance) · catalogue commit ${CAT_COMMIT.slice(0, 7)}`]

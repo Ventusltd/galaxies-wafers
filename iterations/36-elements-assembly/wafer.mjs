@@ -6,6 +6,16 @@
  * changes. The lit run is drawn in its sequence order (the order of the key
  * list in lines.bin), which is the order of the function's lines, not the
  * numeric order of the keys.
+ *
+ * SPEED (iteration 36b). The run line was first stroked on the 2D overlay as one
+ * path of every segment, every frame. Measured in WebKit (iPhone 13 emulation)
+ * that one stroke cost about 660 ms for the largest function's 6,517 segments,
+ * while every GPU draw on the page cost about 1 ms: the whole 707 ms frame. The
+ * run is now a third GPU buffer, each segment a thin quad built once per
+ * function, drawn 1.1 CSS px wide in the same colour; a depth pass lets each
+ * pixel take the colour once, as a single stroked path does where it crosses
+ * itself. Only the three rings and the head dot stay on the overlay. Without
+ * WebGL the page still strokes the path on the 2D canvas, as before.
  */
 import { placeAll, place } from '../../lib.mjs';
 
@@ -27,6 +37,24 @@ void main(){
   if (r > 0.5) discard;
   o = vec4(u_col.rgb, u_col.a * smoothstep(0.5, 0.35, r));
 }`;
+
+/* the run: one quad per segment, widened in device pixels in the vertex shader */
+const RVS = `#version 300 es
+precision highp float;
+in vec2 a_p0; in vec2 a_p1; in vec2 a_ts;
+uniform vec2 u_res; uniform vec2 u_cam; uniform float u_zoom; uniform float u_half;
+void main(){
+  vec2 c0 = (a_p0 - u_cam) * u_zoom, c1 = (a_p1 - u_cam) * u_zoom, d = c1 - c0;
+  float l = length(d); d = l > 1e-6 ? d / l : vec2(1.0, 0.0);
+  vec2 p = mix(c0, c1, a_ts.x) + vec2(-d.y, d.x) * a_ts.y * u_half;
+  gl_Position = vec4(p / (u_res * 0.5), 0.0, 1.0);
+}`;
+const RFS = `#version 300 es
+precision highp float;
+uniform vec4 u_col;
+out vec4 o;
+void main(){ o = u_col; }`;
+const QUAD = [0, -1, 0, 1, 1, -1, 1, -1, 0, 1, 1, 1];   /* (end, side) for the six corners */
 
 export class Wafer {
   constructor(glCanvas, overlay) {
@@ -55,6 +83,16 @@ export class Wafer {
       };
       this.ground = mk(this.groundPos);
       this.litBuf = mk(new Float32Array(2));
+      const rp = gl.createProgram();
+      gl.attachShader(rp, sh(gl.VERTEX_SHADER, RVS)); gl.attachShader(rp, sh(gl.FRAGMENT_SHADER, RFS)); gl.linkProgram(rp);
+      if (!gl.getProgramParameter(rp, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(rp));
+      this.rp = rp; this.rloc = {};
+      for (const u of ['u_res', 'u_cam', 'u_zoom', 'u_half', 'u_col']) this.rloc[u] = gl.getUniformLocation(rp, u);
+      const rvao = gl.createVertexArray(); gl.bindVertexArray(rvao);
+      const rb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, rb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(6), gl.DYNAMIC_DRAW);
+      [['a_p0', 0], ['a_p1', 2], ['a_ts', 4]].forEach(([name, off]) => { const l = gl.getAttribLocation(rp, name); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 24, off * 4); });
+      this.runBuf = { vao: rvao, b: rb }; this.runSegs = 0;
+      gl.bindVertexArray(null);
       gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       this.gl = gl;
       return true;
@@ -82,6 +120,14 @@ export class Wafer {
     this.seqPos = placeAll(seq);
     if (this.gl) {
       const gl = this.gl; gl.bindBuffer(gl.ARRAY_BUFFER, this.litBuf.b); gl.bufferData(gl.ARRAY_BUFFER, this.lit, gl.DYNAMIC_DRAW);
+      const S = this.seqPos, segs = Math.max(0, S.length / 2 - 1), q = new Float32Array(segs * 36);
+      for (let i = 0, o = 0; i < segs; i++) {
+        for (let k = 0; k < 12; k += 2, o += 6) {
+          q[o] = S[i * 2]; q[o + 1] = S[i * 2 + 1]; q[o + 2] = S[i * 2 + 2]; q[o + 3] = S[i * 2 + 3]; q[o + 4] = QUAD[k]; q[o + 5] = QUAD[k + 1];
+        }
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.runBuf.b); gl.bufferData(gl.ARRAY_BUFFER, q, gl.DYNAMIC_DRAW);
+      this.runSegs = segs;
     }
   }
   frame() {
@@ -100,7 +146,7 @@ export class Wafer {
     const t0 = performance.now();
     const v = this.view, gl = this.gl;
     if (gl) {
-      gl.clearColor(0.012, 0.014, 0.020, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.clearColor(0.012, 0.014, 0.020, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.useProgram(this.p);
       gl.uniform2f(this.loc.u_res, this.cv.width, this.cv.height);
       gl.uniform2f(this.loc.u_cam, v.x, v.y);
@@ -117,6 +163,22 @@ export class Wafer {
         gl.uniform1f(this.loc.u_size, s * v.dpr);
         gl.uniform4f(this.loc.u_col, 1.0, 0.835, 0.29, 1.0);
         gl.drawArrays(gl.POINTS, 0, this.litN);
+      }
+      const S = this.seqPos;
+      if (this.runSegs && S) {                                     /* the run, up to the head, over the lit keys */
+        const upto = Math.max(1, Math.round(this.head * (S.length / 2)));
+        const segs = Math.min(this.runSegs, upto - 1);
+        if (segs > 0) {
+          gl.useProgram(this.rp);
+          gl.uniform2f(this.rloc.u_res, this.cv.width, this.cv.height);
+          gl.uniform2f(this.rloc.u_cam, v.x, v.y);
+          gl.uniform1f(this.rloc.u_zoom, v.zoom * v.dpr);
+          gl.uniform1f(this.rloc.u_half, 0.55 * v.dpr);              /* 1.1 CSS px wide, as the 2D stroke */
+          gl.uniform4f(this.rloc.u_col, 94 / 255, 200 / 255, 242 / 255, 0.75);
+          gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS);           /* each pixel takes the colour once */
+          gl.bindVertexArray(this.runBuf.vao); gl.drawArrays(gl.TRIANGLES, 0, segs * 6);
+          gl.disable(gl.DEPTH_TEST);
+        }
       }
     } else if (this.ctx) {
       const c = this.ctx; c.setTransform(1, 0, 0, 1, 0, 0);
@@ -144,13 +206,15 @@ export class Wafer {
     const S = this.seqPos; if (!S || S.length < 2) { this.drawnLit = 0; return; }
     const n = S.length / 2, upto = Math.max(1, Math.round(this.head * n));
     let drawn = 0;
-    c.lineWidth = 1.1; c.strokeStyle = 'rgba(94,200,242,0.75)'; c.beginPath();
+    const gpu = !!(this.gl && this.runSegs);                       /* the line itself is drawn by render() on the GPU */
+    const hw = v.w / 2, hh = v.h / 2, z = v.zoom;
+    if (!gpu) { c.lineWidth = 1.1; c.strokeStyle = 'rgba(94,200,242,0.75)'; c.beginPath(); }
     for (let i = 0; i < upto; i++) {
-      const [x, y] = this.toScreen(S[i * 2], S[i * 2 + 1]);
-      if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+      const x = (S[i * 2] - v.x) * z + hw, y = hh - (S[i * 2 + 1] - v.y) * z;
+      if (!gpu) { if (i === 0) c.moveTo(x, y); else c.lineTo(x, y); }
       if (x > -20 && y > -20 && x < v.w + 20 && y < v.h + 20) drawn++;
     }
-    c.stroke();
+    if (!gpu) c.stroke();
     this.drawnLit = drawn;
     const mark = (x, y, col, r) => { c.strokeStyle = col; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.stroke(); };
     const [fx, fy] = this.toScreen(S[0], S[1]); mark(fx, fy, '#ffffff', 9);
