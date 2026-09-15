@@ -1,0 +1,85 @@
+/* Assembly. 390 px first; the desktop is the same column with more room.
+   Grid Atlas popup grammar: black ground, #444 edge, monospace, amber title,
+   grey detail, bordered cyan buttons. */
+:root{
+  --ink:#d8dee9; --dim:#8b93a7; --ground:#05060a; --edge:#444; --panel:#0b0d12;
+  --lit:#ffd54a; --beam:#5ec8f2; --kv400:#0054ff;
+  --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html{background:var(--ground)}
+body{
+  margin:0 auto; max-width:980px; background:var(--ground); color:var(--ink);
+  font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  padding:calc(var(--top) + .4rem) .6rem calc(var(--bot) + 1.2rem);
+  -webkit-text-size-adjust:100%;
+}
+.dim{color:var(--dim)}
+#bar{display:flex; flex-direction:column; gap:.35rem}
+#wordmark{letter-spacing:.14em; font-size:11px; color:var(--lit)}
+#counts{font-size:11px}
+#search{display:flex; gap:.35rem}
+#search input{
+  flex:1 1 auto; min-width:0; padding:.55rem .5rem; font:inherit; font-size:16px;
+  background:#11151f; color:var(--ink); border:1px solid var(--edge); border-radius:6px;
+}
+#search input:focus{outline:none; border-color:var(--beam)}
+button, .btn{
+  font:inherit; padding:.5rem .7rem; border-radius:6px; cursor:pointer;
+  background:#0b0d12; color:var(--beam); border:1px solid var(--beam); text-decoration:none;
+  display:inline-block;
+}
+button:disabled{opacity:.45; cursor:default}
+#rail{display:grid; grid-template-columns:1fr 1fr; gap:.3rem; margin:.45rem 0}
+#rail button{color:var(--dim); border-color:var(--edge); text-align:left; font-size:12px; padding:.45rem .5rem}
+#rail button b{color:var(--ink)}
+#rail button[aria-pressed="true"]{color:var(--lit); border-color:var(--lit)}
+#gatebox{grid-column:1 / -1; display:flex; gap:.5rem; align-items:center; font-size:11px}
+#gate{flex:1 1 auto; accent-color:var(--beam)}
+#view{
+  position:relative; height:min(58vh, 520px); min-height:300px;
+  border:1px solid var(--edge); border-radius:8px; overflow:hidden; background:#030406;
+  touch-action:none;
+}
+#view canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+#gatesay{position:absolute; left:.45rem; bottom:.35rem; font-size:10.5px; pointer-events:none; right:.45rem}
+#card{border:1px solid var(--edge); border-radius:8px; background:#000; padding:.6rem .7rem; margin-top:.5rem}
+#card h2{margin:0 0 .2rem; font-size:14px; color:var(--lit); font-weight:600; word-break:break-word}
+#sub{word-break:break-word}
+#actions{display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.45rem}
+#actions select{font:inherit; font-size:14px; background:#11151f; color:var(--ink); border:1px solid var(--edge); border-radius:6px; padding:.4rem; max-width:100%}
+#result{margin-top:.4rem}
+#result pre{white-space:pre-wrap; word-break:break-word; max-height:14rem; overflow:auto; background:#0b0d12; border:1px solid #222; padding:.4rem; margin:.3rem 0; font-size:11px}
+.value{color:var(--lit); font-size:15px}
+.disclaimer{color:var(--dim); font-size:11px; border-left:2px solid var(--edge); padding-left:.45rem; margin-top:.4rem}
+#refusal{color:#ffb86b; border:1px dashed #ffb86b; border-radius:6px; padding:.4rem .5rem; margin-bottom:.45rem}
+#refusal[data-kind="note"]{color:var(--ink); border-color:var(--edge)}
+.refuse{color:#ffb86b}
+details{border:1px solid var(--edge); border-radius:8px; margin-top:.5rem; background:var(--panel)}
+summary{cursor:pointer; padding:.5rem .7rem; color:var(--beam); letter-spacing:.06em}
+details > div, details > p, details > ul{padding:0 .7rem .6rem; margin:0}
+#qbody dt, #mbody dt{color:var(--ink); margin-top:.45rem}
+#qbody dd, #mbody dd{margin:.1rem 0 0 0; color:var(--dim); word-break:break-word}
+#qbody q{color:var(--ink)}
+#srclist{list-style:none}
+#srclist li{padding:.15rem 0; word-break:break-all; font-size:11px}
+.tag{display:inline-block; min-width:3.6em; text-align:center; border:1px solid var(--edge); border-radius:4px; font-size:10px; padding:0 .25rem; margin-right:.35rem; color:var(--dim)}
+.tag[data-s="OK"]{color:var(--beam); border-color:var(--beam)}
+.tag[data-s="LOAD"]{color:var(--lit); border-color:var(--lit)}
+.tag[data-s="EMPTY"], .tag[data-s="FAIL"]{color:#ffb86b; border-color:#ffb86b}
+a{color:var(--beam)}
+@media (min-width:760px){
+  #bar{flex-direction:row; align-items:center; justify-content:space-between}
+  #search{flex:0 1 26rem}
+  #rail{grid-template-columns:repeat(4,1fr) 2fr}
+  #gatebox{grid-column:auto}
+  #view{height:min(62vh, 620px)}
+}
+
+/* the button row: short uppercase labels, as the GRID and MAP buttons */
+.btnrow{display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.45rem}
+.btnrow button, .btnrow a{font-size:11px; letter-spacing:.08em; padding:.42rem .55rem; min-width:3.9rem; text-align:center}
+.btnrow button[data-state="reason"]{color:#ffb86b; border-color:#ffb86b}
+#evidence{font-size:10.5px; margin-top:.3rem}
+.handoff{margin-top:.35rem}
+.handoff a{margin-right:.4rem}
