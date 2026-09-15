@@ -1,0 +1,41 @@
+:root{--ink:#d8dee9;--dim:#8b93a7;--ground:#0b0d12;--edge:#1b2030;--beam:#5ec8f2;--grey:#8b93a7}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  padding:calc(env(safe-area-inset-top,0px) + .8rem) 1rem calc(env(safe-area-inset-bottom,0px) + 2rem)}
+main{max-width:52rem;margin:0 auto}
+h1{font-size:14px;letter-spacing:.18em;font-weight:600;margin:0 0 .35rem;color:#fff}
+h2{font-size:11.5px;letter-spacing:.14em;font-weight:600;margin:0;color:#fff}
+p{margin:.35rem 0}
+.dim{color:var(--dim)} .small{font-size:11.5px}
+a{color:var(--beam);overflow-wrap:anywhere}
+code{color:var(--beam);overflow-wrap:anywhere}
+.summary{border-left:3px solid #fff;padding:.35rem .6rem;background:#10131b;margin:.6rem 0;overflow-wrap:anywhere}
+.sec{border:1px solid var(--edge);border-radius:.45rem;background:#0e1118;margin:.7rem 0;padding:.5rem .65rem}
+.rows{list-style:none;margin:.4rem 0 0;padding:0;display:grid;gap:.4rem}
+.row{border:1px solid var(--edge);border-left-width:4px;border-radius:.4rem;background:#10131b;padding:.4rem .55rem;overflow-wrap:anywhere;min-width:0}
+.row.same{border-left-color:#eceff4;border-left-style:solid}
+.row.changed{border-left-color:#eceff4;border-left-style:double;border-left-width:6px}
+.row.empty{border-left-color:var(--grey);border-left-style:dotted}
+.rhead{display:flex;flex-wrap:wrap;gap:.2rem .6rem;align-items:baseline}
+.st{font-weight:600;letter-spacing:.08em;color:#fff;font-size:12px}
+.row.empty .st{color:var(--grey)}
+.link{display:block;background:#05060a;border:1px solid var(--edge);border-radius:.3rem;padding:.25rem .4rem;margin:.25rem 0;color:#cfd6e4;font-size:11px;white-space:pre-wrap;word-break:break-all}
+.f{display:grid;grid-template-columns:6.5rem 1fr;gap:.05rem .5rem;font-size:11.5px}
+.f span:nth-child(odd){color:var(--dim)}
+.quote{border-left:2px solid var(--dim);padding-left:.5rem;color:#cfd6e4;font-size:11.5px;white-space:pre-wrap;margin:.3rem 0}
+.pick{display:flex;flex-wrap:wrap;gap:.4rem;margin:.45rem 0}
+.pick select{flex:1 1 12rem;min-width:0;font:inherit;font-size:16px;color:#fff;background:#05060a;border:1px solid var(--edge);border-radius:.35rem;min-height:44px}
+button,.chip{font:inherit;color:var(--ink);background:#07080c;border:1px solid var(--edge);border-radius:.35rem;min-height:44px;padding:0 .7rem}
+button:disabled{opacity:.4}
+.chip{min-height:36px;font-size:11.5px}
+textarea{width:100%;font:inherit;font-size:16px;color:#fff;background:#05060a;border:1px solid var(--edge);border-radius:.35rem;padding:.4rem;min-height:7.5em;resize:vertical}
+/* The MAP button, in Pipeline News' grammar: an outlined action link reading "MAP ↗". */
+.action-link.atlaslink{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:88px;padding:0 .9rem;
+  border:1px solid var(--beam);border-radius:.3rem;color:var(--beam);text-decoration:none;font-weight:700;letter-spacing:.1em}
+.action-disabled{display:inline-flex;align-items:center;min-height:44px;padding:0 .9rem;border:1px dashed var(--grey);border-radius:.3rem;color:var(--grey);letter-spacing:.1em}
+.refuse{color:#fff;text-decoration:underline;text-underline-offset:3px}
+.questions{border:1px solid var(--edge);border-radius:.45rem;background:#10131b;padding:0 .65rem;margin:1.2rem 0 .5rem}
+.questions summary{font-size:11px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;color:var(--beam);min-height:44px;display:flex;align-items:center}
+.questions dt{color:#fff;margin-top:.5rem;font-size:12px}
+.questions dd{margin:.2rem 0 .6rem;font-size:11.5px;overflow-wrap:anywhere}
