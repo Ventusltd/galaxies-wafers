@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 34,
+ "count": 35,
  "iterations": [
   {
    "n": 1,
@@ -349,6 +349,15 @@
    "commit": "a185773a3e5f9e3353db04c8bf6f8c14b9cd7d77",
    "committed": "2026-09-15T20:58:58+01:00",
    "subject": "iteration 40: restore the null-name intern key as a text escape"
+  },
+  {
+   "n": 41,
+   "dir": "41-golden-angle",
+   "slug": "golden-angle",
+   "title": "The Placement Law",
+   "commit": "1ae0b652142efe6c031b4d0401b94bb64effaa14",
+   "committed": "2026-09-15T21:04:24+01:00",
+   "subject": "iteration 41 golden angle: The Placement Law"
   }
  ]
 }
