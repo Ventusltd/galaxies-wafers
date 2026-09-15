@@ -762,10 +762,14 @@ function sizeFor(v) {
 }
 
 /* One feature's route. Skipped when its box is more than `pad` px outside the
-   raster; otherwise drawn exactly as the first version drew it, one path per feature. */
+   raster; otherwise drawn exactly as the first version drew it, one path per feature.
+   Screen y grows downward, so a box is above the raster when its LOWEST world y
+   (b[1], the largest screen y) is above the top, and below it when its HIGHEST
+   (b[3]) is below the bottom. The first version tested these the other way
+   round, which dropped every route that crossed the top or bottom edge. */
 function strokeRoute(g, c, i, W, H, z, ox, oy, pad) {
   const b = c.box, bi = i * 4;
-  if (b[bi + 2] * z + ox < -pad || b[bi] * z + ox > W + pad || oy - b[bi + 3] * z < -pad || oy - b[bi + 1] * z > H + pad) return;
+  if (b[bi + 2] * z + ox < -pad || b[bi] * z + ox > W + pad || oy - b[bi + 1] * z < -pad || oy - b[bi + 3] * z > H + pad) return;
   const p = c.pos, s0 = c.start[i], n = c.len[i];
   g.beginPath();
   for (let k = 0; k < n; k++) {
