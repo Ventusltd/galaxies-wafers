@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>The MAP Button, Round Trip</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>THE MAP BUTTON, ROUND TRIP</h1>
+  <p class="dim">Pipeline News puts a <b>MAP ↗</b> button on a project record. It is a deep link: a URL that carries the project's identity into Grid Atlas. This page runs the estate's own contract module, <code>deeplink/contract.js</code>, in your browser, and shows the link surviving and failing.</p>
+  <p class="dim small" id="src">module: loading…</p>
+  <div class="summary" id="summary">running the round trip…</div>
+
+  <section class="sec" id="s-round">
+    <h2>1 · ROUND TRIP</h2>
+    <p class="dim small">For every bucket in the module's <code>BUCKETS</code>: a <b>synthetic</b> record (not a real project) goes through <code>buildDeepLink</code>, then <code>parseDeepLink</code>. Each field is compared with <code>===</code>.</p>
+    <ul class="rows" id="round"></ul>
+  </section>
+
+  <section class="sec" id="s-recv">
+    <h2>2 · RECEIVERS</h2>
+    <p class="dim small">From <code>deeplink/receivers.json</code> at the same commit. Nothing is fetched until you tap. Queue of 4, 15 s timeout each, GET with no cache. The status is measured now, in your browser.</p>
+    <div class="pick"><button type="button" id="measure" disabled>measure receivers now</button></div>
+    <ul class="rows" id="recv"></ul>
+  </section>
+
+  <section class="sec" id="s-break">
+    <h2>3 · BREAK IT</h2>
+    <p class="dim small">Edit the link by hand. The page runs <code>parseDeepLink</code> on each change, then asks <code>buildDeepLink</code> to rebuild it, and reports what the module refuses, drops or lets through.</p>
+    <textarea id="edit" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="deep link to parse"></textarea>
+    <div class="pick" id="chips"></div>
+    <div id="verdict" aria-live="polite"></div>
+  </section>
+
+  <section class="sec" id="s-map">
+    <h2>4 · MAP BUTTON</h2>
+    <p class="dim small">Pick a synthetic record. The button opens the canonical receiver with the link <code>buildDeepLink(record)</code> returns. The identity is synthetic, so the receiver's register lookup should not find it: that is the honest arrival for made-up data.</p>
+    <div class="pick"><select id="pick" aria-label="synthetic record"></select><span id="mapbtn"></span></div>
+    <code class="link" id="maphref"></code>
+    <p class="small" id="sender"></p>
+  </section>
+
+  <details id="questions" class="questions">
+    <summary>Questions</summary>
+    <dl>
+      <dt>How does this help draw a system or a single-line diagram?</dt>
+      <dd id="q1">It draws no busbar, feeder or transformer itself. It carries a project's identity (<code>repd_ref</code>) and its point (<code>latitude</code>, <code>longitude</code>, <code>zoom</code>) to the map, where the receiver draws the project's connection: the measured line to the nearest mapped transmission substation (<code>canonical.computes</code> in receivers.json). The technology field picks which map layer is switched on, through <code>layerIdForBucket</code>.</dd>
+      <dt>What is this code used for?</dt>
+      <dd id="q2">loading…</dd>
+      <dt>Where does it lead next?</dt>
+      <dd id="q3">To the receiver's arrival: register lookup by exact <code>repd_ref</code>, fly to the point, enable the resolved layer, then measure the nearest mapped substation (docs/deeplink-contract.md §3). On this site the receiving side is iteration <a href="../09-deeplink-receiver/">09, the deep-link receiver</a>. Whether a real arrival completes is not established by this page: it sends only synthetic identities.</dd>
+    </dl>
+    <p class="small" id="machine">Machine detail: loading…</p>
+  </details>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
