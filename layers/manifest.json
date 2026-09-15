@@ -103,11 +103,11 @@
    "preload": false,
    "colour": "#ff8c00",
    "evidence": "blocks in the live register with files[].path under testcode/202609142225/, each function family they name placed at its first line",
-   "note": "The generator that draws a star: its core, its bench and its interface, as the register records them. Every function carries the same thirteen-parameter shell. Where a block's live address points at a different folder from its files, stats.live_mismatch says so.",
+   "note": "The generator that draws a star: its core, its bench and its interface, as the register records them. Each mark shows two things kept apart: the register lists the function inside a block, and the module as a whole accepts thirteen URL parameters. Neither says this function reads those parameters or runs in the current file. Where a block's live address points at a different folder from its files, stats.live_mismatch says so.",
    "file": "layers/star-generator.json",
-   "bytes": 4461,
+   "bytes": 7312,
    "features": 6,
-   "sha256": "3655b0558901228a0996f0079dfcb9d41d718c5a7ed533f7ca2bb6082a09e861"
+   "sha256": "d92f17058dc1678b6d4e3b368b02c7b7b90f14ae8b43d8b2fbbb5d82bc6b6d32"
   },
   {
    "id": "spider",

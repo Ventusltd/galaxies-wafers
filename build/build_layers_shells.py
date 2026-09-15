@@ -8,7 +8,12 @@ load_estate, first_key and write_layer and adds nothing to the format.
 
   star-generator  every function family named by a block whose files[].path
                   starts testcode/202609142225/ in the live register, placed at
-                  its first line. Each carries the 13-parameter shell.
+                  its first line. Each feature carries two separately named facts:
+                  registered_block_membership (the register lists this family inside
+                  that block; it is not proof the family occurs in the current file
+                  or is called at run time) and module_contract_parameters (the
+                  thirteen URL parameters of the module as a whole; not a claim that
+                  this function reads any of them).
   spider          the register is searched for Ventusltd/ventus-grid-engine at
                   index.html or spider/. It knows nothing there, so the layer
                   ships EMPTY with the reason in stats.why. An empty layer with
@@ -33,6 +38,10 @@ import build_layers as BL  # noqa: E402
 STAR_FOLDER = "testcode/202609142225/"
 STAR_SHELL = ["key", "block", "family", "graph", "focus", "blocks", "lens", "trail", "recipe", "m",
               "edges", "cat", "data"]
+MEMBERSHIP_MEANING = ("the live register lists this function family inside this block; not proof that the "
+                      "family occurs in the block's current file or that anything calls it at run time")
+CONTRACT_MEANING = ("the URL parameters the star generator module accepts as a whole; not a claim that this "
+                    "function reads any of them")
 SPIDER_REPO = "Ventusltd/ventus-grid-engine"
 SPIDER_PATHS = ["index.html", "spider/"]
 SPIDER_SHELL = ["graph", "focus"]
@@ -75,7 +84,13 @@ def layer_star_generator(E, doc, reg_src):
                 continue
             feats.append({"type": "Feature", "geometry": {"type": "Point", "key": k},
                           "properties": {"block": blk["symbol"], "title": blk["title"], "function": fn["name"],
-                                         "family": fn["family"], "shell": STAR_SHELL}})
+                                         "family": fn["family"],
+                                         "registered_block_membership": {
+                                             "block": blk["symbol"],
+                                             "meaning": MEMBERSHIP_MEANING},
+                                         "module_contract_parameters": {
+                                             "parameters": STAR_SHELL,
+                                             "meaning": CONTRACT_MEANING}}})
     per_block = {s: sum(1 for f in feats if f["properties"]["block"] == s) for s in blocks}
     stats = {"features": len(feats), "blocks_searched": len(doc["blocks"]), "blocks": blocks,
              "per_block": per_block, "distinct_keys": len({f["geometry"]["key"] for f in feats}),
@@ -85,15 +100,19 @@ def layer_star_generator(E, doc, reg_src):
              "unresolved_why": "a family the register names that the numbered database does not contain has no "
                                "first line to place; it is listed here, never given an invented key",
              "live_mismatch": live_mismatch,
-             "files_outside_folder": other_files, "shell": STAR_SHELL}
+             "files_outside_folder": other_files, "module_contract_parameters": STAR_SHELL,
+             "field_meanings": {"registered_block_membership": MEMBERSHIP_MEANING,
+                                "module_contract_parameters": CONTRACT_MEANING}}
     return BL.write_layer(
         {"id": "star-generator", "label": "The star generator", "group": "THE WORKING MODULES", "preload": False,
          "colour": "#f48fb1",
          "evidence": f"blocks in the live register with files[].path under {STAR_FOLDER}, each function family "
                      "they name placed at its first line",
          "note": "The generator that draws a star: its core, its bench and its interface, as the register "
-                 "records them. Every function carries the same thirteen-parameter shell. Where a block's live "
-                 "address points at a different folder from its files, stats.live_mismatch says so."},
+                 "records them. Each mark shows two things kept apart: the register lists the function inside a block, "
+                 "and the module as a whole accepts thirteen URL parameters. Neither says this function reads "
+                 "those parameters or runs in the current file. Where a block's live address points at a "
+                 "different folder from its files, stats.live_mismatch says so."},
         feats, stats, E["sources"] + [reg_src])
 
 

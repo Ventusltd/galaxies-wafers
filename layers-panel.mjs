@@ -58,6 +58,7 @@ style.textContent = `
 #layersInspect dl{display:grid;grid-template-columns:auto 1fr;gap:.1rem .5rem;margin:.3rem 0}
 #layersInspect dt{color:#8b93a7}
 #layersInspect dd{margin:0;overflow-wrap:anywhere}
+#layersInspect .lmeaning{color:#8b93a7;font-size:10.5px;margin-top:.1rem}
 #layersInspect .lnote{margin-left:0}
 #layersInspectClose{position:absolute;top:0;right:0;background:none;border:0;color:#8b93a7;font:inherit;cursor:pointer}
 .lgroup{color:#8b93a7;font-size:10.5px;letter-spacing:.08em;margin:.55rem 0 .15rem}
@@ -361,6 +362,21 @@ const node = (tag, text, cls) => {
 };
 
 /* Dataset text only ever reaches the page through textContent. */
+/* A property that carries its own "meaning" is shown as its value, then the
+   meaning on a dim line beneath, so a reader on a phone sees what the value is
+   and what it is not, without reading raw JSON. Anything else keeps its text. */
+function valueNode(val) {
+  const dd = node('dd');
+  if (val !== null && typeof val === 'object' && !Array.isArray(val) && typeof val.meaning === 'string') {
+    const rest = Object.entries(val).filter(([k]) => k !== 'meaning')
+      .map(([k, x]) => (Array.isArray(x) ? x.join(', ') : (x !== null && typeof x === 'object' ? JSON.stringify(x) : String(x))));
+    dd.append(node('div', rest.join(' · ')), node('div', val.meaning, 'lmeaning'));
+    return dd;
+  }
+  dd.textContent = val !== null && typeof val === 'object' ? JSON.stringify(val) : String(val);
+  return dd;
+}
+
 function inspect(hit) {
   picked = hit;
   const box = $('layersInspect');
@@ -375,7 +391,7 @@ function inspect(hit) {
   const where = node('div', g.type === 'Point' ? `line ${g.key}` : `lines ${g.keys.join(' → ')}`, 'lnote');
   const dl = node('dl');
   for (const [k, val] of Object.entries(f.properties || {})) {
-    dl.append(node('dt', k), node('dd', val !== null && typeof val === 'object' ? JSON.stringify(val) : val));
+    dl.append(node('dt', k), valueNode(val));
   }
   const ev = node('div', 'evidence: ' + (l.evidence ?? 'none recorded'), 'lnote');
   box.append(close, h, where, dl, ev);
