@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 33,
+ "count": 34,
  "iterations": [
   {
    "n": 1,
@@ -34,9 +34,9 @@
    "dir": "04-400kv-engine",
    "slug": "400kv-engine",
    "title": "400kV Engine Mode — module routes restyled as grid voltage",
-   "commit": "ec3b9641b10148d1a690a9fa633fd1b982935221",
-   "committed": "2026-09-15T17:50:39+01:00",
-   "subject": "iterations/04: 400kV engine mode â€” module routes restyled as grid voltage"
+   "commit": "9ab072133b2d39e32e47ce6a1cccdc5fab62554f",
+   "committed": "2026-09-15T20:59:12+01:00",
+   "subject": "iterations/04: load the module routes in view, batched, capped; bands unchanged"
   },
   {
    "n": 5,
@@ -340,6 +340,15 @@
    "commit": "03c6ab622746badfaa1accdb6066fad6a9b004a8",
    "committed": "2026-09-15T20:47:43+01:00",
    "subject": "iteration 39 decisions and permission: No Record, No Permission"
+  },
+  {
+   "n": 40,
+   "dir": "40-same-name-same-body",
+   "slug": "same-name-same-body",
+   "title": "Same Name, Same Body?",
+   "commit": "a185773a3e5f9e3353db04c8bf6f8c14b9cd7d77",
+   "committed": "2026-09-15T20:58:58+01:00",
+   "subject": "iteration 40: restore the null-name intern key as a text escape"
   }
  ]
 }
