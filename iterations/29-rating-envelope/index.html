@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Ratings That Do Not Add</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="envelope.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>RATINGS THAT DO NOT ADD</h1>
+    <div class="dim">Each lit line is one circuit with the seasonal ratings its record publishes. Drag circuits into the corridor below to try to make a total. The page hands them to the rating-envelope engine module and shows whatever the module returns, in its own words. The page itself adds nothing up.</div>
+    <div id="mods" class="mods" aria-live="polite"></div>
+  </header>
+
+  <div class="cols">
+    <section>
+      <h2>CIRCUITS · <span id="fixlabel">fixture from the module's proof</span></h2>
+      <div id="provenance" class="dim small"></div>
+      <p id="notcap" class="note small"></p>
+      <div class="ctl">
+        <span class="tag">SEASON SHOWN</span>
+        <div id="seasons" class="seg"></div>
+      </div>
+      <ul id="circuits" class="circuits"></ul>
+      <div id="legend" class="dim small legend"></div>
+    </section>
+
+    <section id="read">
+      <h2>WHAT THE MODULE RETURNS</h2>
+      <p class="boundary">Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.</p>
+      <div class="ctl">
+        <span class="tag">SCENARIO INPUT · options.voltageKv passed to at()</span>
+        <div id="volts" class="seg"></div>
+      </div>
+      <div id="sum" class="sum"></div>
+      <div id="calls" class="calls"></div>
+      <details id="questions" class="questions">
+        <summary>Questions</summary>
+        <dl>
+          <dt>1. How does this help draw a system or a single-line diagram?</dt>
+          <dd>It feeds the <b>feeder (circuit) annotations</b> at a busbar, never a busbar figure. On a single-line diagram each circuit leaving a busbar carries its own rating label; <code>at()</code> supplies it per circuit as <code>circuits[].ratings_mva</code> (read from the record fields <code>winter_mva</code>, <code>spring_mva</code>, <code>summer_mva</code>, <code>autumn_mva</code>), with <code>circuits[].flags</code> for placeholders and <code>by_season.lowest_circuit_mva</code> / <code>highest_circuit_mva</code> as a range. No busbar total is drawn because, in the module's words: <q id="q-never"></q> It draws no transformer, cable route, protection or earthing.</dd>
+          <dt>2. What is this code used for?</dt>
+          <dd>Module <code>engine/rating-envelope.js</code>, ventus-grid-engine commit <span class="pin12"></span>; exported function <code>at(index, key, options)</code> (source line 86) with exports <span id="q-exports"></span>. It was promoted from gridatlas <code>atlas/modules/202609012250-rating-envelope.js</code> (its header, lines 4–20). Caller in the estate, read from source: the gridatlas SLD sandbox cartridge <code>atlas/cartridges/202609012345-sld-sandbox-v9-8.js</code> (gridatlas commit 06e0a1444caf) calls <code>mod.at(topology.index, point.site_code, …)</code> at line 3770 and prints a "Circuit ratings" card at line 3784 that states the figures are not added together. Later sld-sandbox and substation-intelligence cartridges carry an embedded copy registered as <code>ratingEnvelope</code> (name-match inference; not every call site was read).</dd>
+          <dt>3. Where does it lead next?</dt>
+          <dd>To conductor current: <code>engine/current-from-power.js</code> <code>currentFromMvaAtKv({ mva, kv, phases })</code>, whose own comment (lines 131–133, same commit) says "This is the call a rating-envelope result feeds". No code at this commit wires the two together (searched by name), so the link is the comment's statement, not an established call.</dd>
+        </dl>
+      </details>
+      <p id="machine" class="machine small"></p>
+      <footer class="dim small">
+        Line colours are the Grid Atlas v8 topology colours (repd_grid_atlasv8 layer config: 400kV, 275kV, 220kV, 132kV, 66kV, 11kV); each end of a line takes the colour of the voltage its node declares, and substations are white as the Atlas draws them. A node with no declared voltage, a season with no published value, and a value the module flags as a placeholder are drawn grey. Every line is drawn the same width: a rating is not drawn as a size.
+        <span id="pin"></span>
+        <a href="../">every version</a>
+      </footer>
+    </section>
+  </div>
+</main>
+
+<div id="tray" class="tray" aria-label="Corridor: drop circuits here">
+  <div class="trayhead"><b>CORRIDOR</b> <span id="traycount" class="dim"></span> <a href="#read" class="small">read the result</a></div>
+  <div id="traychips" class="chips"></div>
+</div>
+<script type="module" src="envelope.mjs"></script>
+</body>
+</html>
