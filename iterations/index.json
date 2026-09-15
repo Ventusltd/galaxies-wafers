@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 36,
+ "count": 37,
  "iterations": [
   {
    "n": 1,
@@ -34,9 +34,9 @@
    "dir": "04-400kv-engine",
    "slug": "400kv-engine",
    "title": "400kV Engine Mode — module routes restyled as grid voltage",
-   "commit": "9ab072133b2d39e32e47ce6a1cccdc5fab62554f",
-   "committed": "2026-09-15T20:59:12+01:00",
-   "subject": "iterations/04: load the module routes in view, batched, capped; bands unchanged"
+   "commit": "17032d46458b6ad0a77080348a690942717a6ac0",
+   "committed": "2026-09-15T21:33:33+01:00",
+   "subject": "iterations/04: routes crossing the top or bottom edge are drawn, not dropped"
   },
   {
    "n": 5,
@@ -283,18 +283,18 @@
    "dir": "32-spider-and-galaxy",
    "slug": "spider-and-galaxy",
    "title": "Spider and Galaxy — one universe, two views",
-   "commit": "7bbce7a4bc37aa5d1f7e3d2ea4b930264b1c1e23",
-   "committed": "2026-09-15T20:13:15+01:00",
-   "subject": "iteration 32 spider and galaxy: one universe, two views"
+   "commit": "c3ae65c685d8f9d17bb4d4695490ba49c9d09758",
+   "committed": "2026-09-15T21:24:55+01:00",
+   "subject": "iterations 32 and 33 read the link that iteration 36 hands them"
   },
   {
    "n": 33,
    "dir": "33-engines-as-tools",
    "slug": "engines-as-tools",
    "title": "Engines as Tools — the 400kV engine's drawing logic, applied to any layer",
-   "commit": "e710bc174d0400fa82f0aabeedab90bcc93efe69",
-   "committed": "2026-09-15T20:10:28+01:00",
-   "subject": "iteration 33 Engines as Tools: the 400kV engine's drawing logic as one reusable tools module"
+   "commit": "c3ae65c685d8f9d17bb4d4695490ba49c9d09758",
+   "committed": "2026-09-15T21:24:55+01:00",
+   "subject": "iterations 32 and 33 read the link that iteration 36 hands them"
   },
   {
    "n": 34,
@@ -367,6 +367,15 @@
    "commit": "e711a90a85f9ce9b06923fed6337d8e137e75368",
    "committed": "2026-09-15T21:20:00+01:00",
    "subject": "iteration 42 counts that say themselves: the estate's count sentences recomputed from live data"
+  },
+  {
+   "n": 43,
+   "dir": "43-registry-growth",
+   "slug": "registry-growth",
+   "title": "How the Estate Grew",
+   "commit": "f86669a2f578b4ab7b7d7b0d6a921b7b8b0ad86a",
+   "committed": "2026-09-15T21:34:50+01:00",
+   "subject": "iteration 43 How the Estate Grew: 19 registry snapshots counted, diffed, drawn and checked"
   }
  ]
 }
