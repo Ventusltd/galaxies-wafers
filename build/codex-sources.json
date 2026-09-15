@@ -1,0 +1,191 @@
+{
+  "built_utc": "2026-09-15T16:40:29Z",
+  "inputs": {
+    "all-lines.bin": {
+      "repo": "Ventusltd/globalgrid2050",
+      "commit": "82a02ec0b57a65596f016dc03a2a3775a289667e",
+      "path": "testcode/202609142202/data/all-lines.bin",
+      "git_blob": "e36f8ba0b74e0ecccfa24dbde059e80cd50d0dad"
+    },
+    "all-lines.meta.json": {
+      "repo": "Ventusltd/globalgrid2050",
+      "commit": "82a02ec0b57a65596f016dc03a2a3775a289667e",
+      "path": "testcode/202609142202/data/all-lines.meta.json",
+      "git_blob": "24364933f6eb76c90b2572208384ef46cf6f6d66"
+    },
+    "families.json": {
+      "repo": "Ventusltd/globalgrid2050",
+      "commit": "82a02ec0b57a65596f016dc03a2a3775a289667e",
+      "path": "testcode/202609142202/data/families.json",
+      "git_blob": "3ea35db2024db162081be275e3ac705d49b47c62"
+    },
+    "lines.bin": {
+      "repo": "Ventusltd/globalgrid2050",
+      "commit": "82a02ec0b57a65596f016dc03a2a3775a289667e",
+      "path": "testcode/202609142202/data/lines.bin",
+      "git_blob": "42a617a2be567ff7ac2204a60a8483190b0517f6"
+    },
+    "block-families.json": {
+      "repo": "Ventusltd/stars",
+      "commit": "1b6d9294985e0bbbdb30bda857ea4dc961d7df2c",
+      "path": "blocks/families.json",
+      "git_blob": "cf292280e6371acd4fc744b8685cefdb94c2c189"
+    },
+    "families-3.json": {
+      "repo": "Ventusltd/stars",
+      "commit": "1b6d9294985e0bbbdb30bda857ea4dc961d7df2c",
+      "path": "code/f/3.json",
+      "git_blob": "739f694becf9d7b077252a2d31b2861b002ff622"
+    },
+    "families-4.json": {
+      "repo": "Ventusltd/stars",
+      "commit": "1b6d9294985e0bbbdb30bda857ea4dc961d7df2c",
+      "path": "code/f/4.json",
+      "git_blob": "2bb1cefab9df103757630dae4abe9f1682757bba"
+    },
+    "families-9.json": {
+      "repo": "Ventusltd/stars",
+      "commit": "1b6d9294985e0bbbdb30bda857ea4dc961d7df2c",
+      "path": "code/f/9.json",
+      "git_blob": "c7e631a33801aaba82fd05bcbd41e91f64508ac2"
+    },
+    "families-16.json": {
+      "repo": "Ventusltd/stars",
+      "commit": "1b6d9294985e0bbbdb30bda857ea4dc961d7df2c",
+      "path": "code/f/16.json",
+      "git_blob": "ced091c70399fe11871cc4d3bdd89538bd210ff1"
+    },
+    "families-17.json": {
+      "repo": "Ventusltd/stars",
+      "commit": "1b6d9294985e0bbbdb30bda857ea4dc961d7df2c",
+      "path": "code/f/17.json",
+      "git_blob": "d0b255110f5620a8b4416ed633dc4cd8c6855a34"
+    },
+    "families-18.json": {
+      "repo": "Ventusltd/stars",
+      "commit": "1b6d9294985e0bbbdb30bda857ea4dc961d7df2c",
+      "path": "code/f/18.json",
+      "git_blob": "b10b74a5eee32170e8c57da9217f5097f349c445"
+    },
+    "families-54.json": {
+      "repo": "Ventusltd/stars",
+      "commit": "1b6d9294985e0bbbdb30bda857ea4dc961d7df2c",
+      "path": "code/f/54.json",
+      "git_blob": "53758c8ea61ebdd5a1f7cde5571c55cfc7edf73c"
+    },
+    "sld-source.js": {
+      "repo": "Ventusltd/gridatlas",
+      "commit": "ece848117a6d21b7fccb232557194877698c48a9",
+      "path": "atlas/cartridges/202609080850-sld-sandbox-v9-8.js",
+      "git_blob": "e6a9fe69e890e565756b1bc7a18f842345d0a78f"
+    },
+    "geodesy.js": {
+      "repo": "Ventusltd/gridatlas",
+      "commit": "ece848117a6d21b7fccb232557194877698c48a9",
+      "path": "atlas/modules/202609011950-geodesy.js",
+      "git_blob": "bfc364925b05a4295fc916fc6d55ec771b337548"
+    },
+    "sld-styles.js": {
+      "repo": "Ventusltd/gridatlas",
+      "commit": "ece848117a6d21b7fccb232557194877698c48a9",
+      "path": "atlas/modules/202609040400-sld-styles.js",
+      "git_blob": "e09e6e8e931da866895997a71ed20833569731a3"
+    },
+    "sizing.js": {
+      "repo": "Ventusltd/gridatlas",
+      "commit": "ece848117a6d21b7fccb232557194877698c48a9",
+      "path": "atlas/modules/202609012205-sizing-arithmetic.js",
+      "git_blob": "19cef31fbf8abdd7c1beb5106b56afe091be9916"
+    },
+    "declared-connections.js": {
+      "repo": "Ventusltd/gridatlas",
+      "commit": "ece848117a6d21b7fccb232557194877698c48a9",
+      "path": "atlas/modules/202609012128-declared-connections.js",
+      "git_blob": "75b53270f4335ae8c26fb22b90a6ad100b934141"
+    },
+    "pipeline-source.js": {
+      "repo": "Ventusltd/globalgrid2050",
+      "commit": "c23329c118cb2563336fc742198825cd37813d1d",
+      "path": "uk_renewables_pipeline/202609082224/scripts/plugins/projects-v9-8.js",
+      "git_blob": "0932252ef1bc529e9c86a15fe1ea5a840fae3201"
+    },
+    "receiver-source.js": {
+      "repo": "Ventusltd/globalgrid2050",
+      "commit": "c23329c118cb2563336fc742198825cd37813d1d",
+      "path": "uk_renewables_pipeline/202609082224/scripts/core/atlas-receiver-v9-7.js",
+      "git_blob": "57823989d87737a95a86e9a06f8b1c18e66564ec"
+    },
+    "pipeline-indexed-source.js": {
+      "repo": "Ventusltd/pipelinenews",
+      "commit": "4980096b57cb35f63ad2d80bded5687beb2a9532",
+      "path": "archive/202608261547-pipelinenews/202608260159-pipelinenews/scripts/plugins/projects-v9-5-1.js",
+      "git_blob": "3e74e74b855a5de611297831be88ed410cf887e5"
+    },
+    "receiver-indexed-source.js": {
+      "repo": "Ventusltd/testcode",
+      "commit": "7f8f33679aa289165fb443484c5115b42744916f",
+      "path": "sandbox/202609051152/pipeline/scripts/core/atlas-receiver-v9-7.js",
+      "git_blob": "57823989d87737a95a86e9a06f8b1c18e66564ec"
+    },
+    "table-source.html": {
+      "repo": "Ventusltd/stars",
+      "commit": "1b6d9294985e0bbbdb30bda857ea4dc961d7df2c",
+      "path": "table.html",
+      "git_blob": "10090e0f73120f5bf19b9604ab6812d7f338fe06"
+    }
+  },
+  "family_buckets": [
+    "families-3.json",
+    "families-4.json",
+    "families-9.json",
+    "families-16.json",
+    "families-17.json",
+    "families-18.json",
+    "families-54.json"
+  ],
+  "source_bridges": [
+    {"reference": "pipeline-indexed-source.js", "target": "pipeline-source.js", "families": [9360]},
+    {"reference": "receiver-indexed-source.js", "target": "receiver-source.js"}
+  ],
+  "requirement_targets": {
+    "geodesy": "geodesy.js",
+    "sld-styles": "sld-styles.js",
+    "sizing-arithmetic": "sizing.js",
+    "declared-connections": "declared-connections.js"
+  },
+  "reader_layers": [
+    [
+      "pipeline-news",
+      "Pipeline News URL readers",
+      "pipeline-source.js",
+      [
+        "technology",
+        "status",
+        "county",
+        "sort",
+        "q"
+      ]
+    ],
+    [
+      "deeplink",
+      "Atlas deep-link interface",
+      "receiver-source.js",
+      [
+        "repd_ref",
+        "technology",
+        "latitude",
+        "longitude",
+        "zoom"
+      ]
+    ],
+    [
+      "periodic-table",
+      "Periodic table URL readers",
+      "table-source.html",
+      [
+        "block",
+        "category"
+      ]
+    ]
+  ]
+}
