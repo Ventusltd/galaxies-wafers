@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>No Record, No Permission</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="dec.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>NO RECORD, NO PERMISSION</h1>
+    <p class="dim">A decision record attaches a judgement to one permanent key of the estate: a block, a constant, a function family or a pair of blocks. A <b>decided</b> record is permission to do what it says. An <b>open</b> record is a question: the key is not changed. <b>No record is no permission.</b> Each record is a stone on the board, placed by its number; the keys it judges are the lit points beside it.</p>
+    <p id="summary" class="summary">WAIT — nothing is fetched until you tick a layer or check a key.</p>
+  </header>
+
+  <section class="layers" aria-label="Layers">
+    <label class="layer"><input type="checkbox" data-layer="stones"><span id="lbl-stones" data-base-label="Stones · decision records">Stones · decision records [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="edges"><span id="lbl-edges" data-base-label="Cased edges · decisions/graph.json">Cased edges · decisions/graph.json [WAIT]</span></label>
+  </section>
+
+  <form id="keyform" class="keyform" autocomplete="off">
+    <label for="key" class="dim small">Type any key: may an agent act on it?</label>
+    <div class="keyrow">
+      <input id="key" name="key" type="text" inputmode="text" autocapitalize="off" spellcheck="false" placeholder="block:Ek · family:511 · line:337722">
+      <button type="submit" id="check">check</button>
+    </div>
+    <div id="verdict" class="verdict none" aria-live="polite"><span class="dim">WAIT — type a key and press check.</span></div>
+  </form>
+
+  <div class="plane">
+    <canvas id="board" aria-label="The decision board. Tap a stone to read its record, tap a lit point to check its key. Drag to pan, pinch or wheel to zoom."></canvas>
+    <button type="button" id="fit" class="fit">fit</button>
+    <div class="boardnav">
+      <button type="button" id="prev" aria-label="previous board" disabled>‹</button>
+      <span id="boardname" class="dim small">board —</span>
+      <button type="button" id="next" aria-label="next board" disabled>›</button>
+    </div>
+    <div id="drawn" class="drawn dim"></div>
+  </div>
+  <p class="legend small dim"><span class="sw sw-decided"></span>decided · <span class="sw sw-open"></span>open (amber ring, the colour the estate's Decisions map gives open records) · <span class="sw sw-super"></span>superseded · <span class="sw sw-bad"></span>does not conform · <span class="sw sw-key"></span>key judged</p>
+
+  <section id="card" class="card" aria-live="polite">
+    <p class="dim">Tap a stone to read its record.</p>
+  </section>
+
+  <h2>RECORDS THAT DO NOT CONFORM TO SCHEMA.md</h2>
+  <ul id="nonconf" class="rows"><li class="plain dim">WAIT — tick Stones.</li></ul>
+  <p id="gate" class="small dim"></p>
+
+  <details id="questions" class="questions">
+    <summary>Questions</summary>
+    <dl>
+      <dt>1. How does this help draw a system or a single-line diagram?</dt>
+      <dd>It draws no busbar, feeder, transformer, cable route, protection or earthing. It says which drawing actions on the keys that feed a drawing are permitted or refused, computed from the records now:
+        <ul id="q-draw" class="qrows"><li class="dim">not yet known: tick Stones.</li></ul>
+        The permission is read from <code>status</code> and <code>consequences.agents_may</code> of each record; the key's name from the <code>label</code> of its node in <code>decisions/graph.json</code>.</dd>
+      <dt>2. What is this code used for?</dt>
+      <dd>Found by searching the estate for the path <code>decisions/</code> at stars commit <span class="pin" id="q-pin">—</span>. <code>modular-star/decision-record.mjs</code> turns a Decision issue into <code>decisions/dNNN.json</code>; <code>modular-star/decisions.mjs</code> reads every record and writes <code>decisions/graph.json</code> (run by <code>.github/workflows/decisions.yml</code> line 40 and <code>.github/workflows/modular-star.yml</code> line 59); <code>modular-star/relate.mjs</code> lines 62–73 counts decisions per key from that graph; <code>spider/register.py</code> line 31 and <code>spider/features.yml</code> line 53 register the map, and ventus-grid-engine <code>spider/manifest.json</code> (commit <span class="pin">13a69ee2a5a9</span>, lines 145–149) lists it on the dashboard. A generator in the <code>Ventusltd/code-generator</code> repository reads <code>decisions/graph.json</code> and links each record, "linked, never restated" (line keys 337721–337723 in stars <code>LINES.md</code>; repository named by its <code>REPO</code> constant on line 337706, name-match inference): <a class="btn" href="../31-code-card-everywhere/?line=337722">CODE</a> <a class="btn" href="https://ventusltd.github.io/galaxies-wafers/?line=337722">WAFER</a>. This page: <code>records.mjs</code> <code>parseSchema</code>, <code>validate</code>, <code>crossCheck</code>, <code>readKey</code>, <code>permission</code>, <code>layoutBoard</code>; drawn by <code>app.mjs</code> on one canvas.</dd>
+      <dt>3. Where does it lead next?</dt>
+      <dd><span id="q-next">not yet known: tick Stones.</span></dd>
+    </dl>
+  </details>
+  <p id="machine" class="machine small">Machine detail · not yet known: tick Stones.</p>
+
+  <footer class="dim small">
+    <p id="loadingrule">Loading, as Grid Atlas does it: nothing is fetched until a layer is ticked or a key is checked.</p>
+    <p id="prov"></p>
+    <p>No colour here is a verdict: granted is white, refused is amber (the estate's own colour for an open record), no record is grey. <a href="../">every version</a></p>
+  </footer>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
