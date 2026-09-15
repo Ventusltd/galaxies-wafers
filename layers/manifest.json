@@ -56,6 +56,19 @@
    "sha256": "795ff94a77d8994f4ed97c30782aca3cca8d406596b5ac6efc7d52dbd45c6512"
   },
   {
+   "id": "grid-engine-shell",
+   "label": "The grid engine, as imported",
+   "group": "THE WORKING MODULES",
+   "preload": false,
+   "colour": "#a8f0c6",
+   "evidence": "the live register's grid-engine blocks, with each module's export subpath, schema and NOT_COMPUTED read from the engine's source",
+   "note": "The engine layer again, with its outer shell: which package.json subpath serves each module, the schema string it stamps on what it returns, and what it refuses to compute. A module with no subpath exists in the repository but a consumer cannot import it by name.",
+   "file": "layers/grid-engine-shell.json",
+   "bytes": 122688,
+   "features": 259,
+   "sha256": "39743069a237ba27386bca22a830584481dae6fb19027e203286816144bae91f"
+  },
+  {
    "id": "declared",
    "label": "Declared dependencies",
    "group": "WHAT FITS WITH WHAT",
