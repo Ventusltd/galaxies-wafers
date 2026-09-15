@@ -76,13 +76,12 @@
    "group": "WHAT FITS WITH WHAT",
    "preload": false,
    "colour": "#ffd54a",
-   "draws": "lines",
-   "evidence": "the chemistry star's recorded composition failures",
-   "note": "Rules nobody declared that the estate learned by trying. Each line is a decay message counted across compositions, and the count is carried with it.",
+   "evidence": "the chemistry star's recorded composition failures, anchored through the element table",
+   "note": "Rules nobody declared that the estate learned by trying. Each mark is a decay message counted across compositions, placed at the element that recorded the failure (the first numbered line of its register block). A line between two modules is drawn only when both are elements in the table; the modules that are not are listed as unanchored with the reason.",
    "file": "layers/learned.json",
-   "bytes": 1514,
-   "features": 0,
-   "sha256": "b3878271c152c1df84bdfb3bbd447890a75d370d2eda3ef9b87892c6d36413a1"
+   "bytes": 4069,
+   "features": 2,
+   "sha256": "53f2d71cc077e33fbd5e858ebee2220a2cf576b7f488af7d63d213a57a7558ca"
   }
  ]
 }

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Proofs — Layers</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='none' stroke='%23d8dee9'/%3E%3Ccircle cx='8' cy='8' r='2' fill='%23ffd54a'/%3E%3C/svg%3E">
+<style>
+  :root{--ink:#d8dee9;--dim:#8b93a7;--ground:#0b0d12;--edge:#1b2030;--ok:#7fd6a2;--bad:#ff8a80;--lit:#ffd54a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    padding:calc(env(safe-area-inset-top,0px) + 1rem) 1rem calc(env(safe-area-inset-bottom,0px) + 2rem);
+    font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;-webkit-text-size-adjust:100%}
+  main{max-width:46rem;margin:0 auto}
+  h1{font-size:17px;letter-spacing:.06em;margin:0 0 .25rem}
+  a{color:#5ec8f2}
+  .dim{color:var(--dim)}
+  #tally{margin:1rem 0;padding:.75rem .9rem;border:1px solid var(--edge);border-radius:8px;font-size:15px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  ol{padding-left:1.4rem;margin:1rem 0}
+  li{margin:.6rem 0;overflow-wrap:anywhere}
+  li .v{display:inline-block;min-width:3.4rem;font-weight:600}
+  #err{color:var(--lit);white-space:pre-wrap;overflow-wrap:anywhere}
+  footer{margin-top:2rem;border-top:1px solid var(--edge);padding-top:.75rem;font-size:12px;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<main>
+  <h1>PROOFS · LAYERS</h1>
+  <p class="dim">Every layer over the wafer, checked in this browser: the substrate it names, the count it states,
+  the sources it traces to, that it carries keys and never coordinates, and that every key it names is a line the
+  numbered database actually issued. <a href="../">Open the wafer</a> · <a href="./">the wafer's own proofs</a></p>
+
+  <div id="tally">running…</div>
+  <ol id="list"></ol>
+  <p id="err"></p>
+
+  <footer class="dim">
+    <div id="prov">provenance loading</div>
+    <div>A check that fails is a defect in a layer or in the data, not in the check. Both are worth knowing.</div>
+  </footer>
+</main>
+
+<script type="module">
+import { buildLayerChecks } from './layers.checks.mjs';
+
+/* The same numbered database proof/index.html reads. ?data=<url ending in /> points elsewhere. */
+const D = new URLSearchParams(location.search).get('data') || 'https://globalgrid2050.com/testcode/202609142202/data/';
+const ROOT = new URL('../', location.href);
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString('en-GB');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+async function get(url, as) {
+  const r = await fetch(url, { cache: 'no-cache' });
+  if (!r.ok) throw new Error(url + ' returned HTTP ' + r.status);
+  return as === 'bin' ? new Uint32Array(await r.arrayBuffer()) : r.json();
+}
+
+try {
+  const [manifest, keys] = await Promise.all([
+    get(new URL('layers/manifest.json', ROOT)),
+    get(D + 'all-lines.bin', 'bin')
+  ]);
+  const layers = new Map();
+  const missing = [];
+  await Promise.all(manifest.layers.map(async l => {
+    try { layers.set(l.id, await get(new URL(l.file, ROOT))); }
+    catch (e) { missing.push(l.id + ': ' + e.message); }
+  }));
+  if (missing.length) $('err').textContent = 'Layer files that did not load:\n' + missing.join('\n');
+
+  let nFeat = 0;
+  for (const d of layers.values()) nFeat += d.features.length;
+  $('prov').textContent = `substrate ${manifest.substrate} · layers built ${manifest.built_utc} · `
+    + `${manifest.layers.length} layers · keys from ${D}all-lines.bin (${fmt(keys.length)} numbered lines)`;
+
+  const checks = buildLayerChecks({ manifest, layers, keys });
+  const list = $('list');
+  let pass = 0, fail = 0;
+
+  for (const [name, fn] of checks) {
+    let ok = false, threw = null;
+    const t0 = performance.now();
+    try { ok = fn() === true; } catch (e) { threw = e.message; }
+    const ms = Math.round(performance.now() - t0);
+    ok ? pass++ : fail++;
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="v ${ok ? 'ok' : 'bad'}">${ok ? 'PASS' : 'FAIL'}</span> ${esc(name)}` +
+      (threw ? ` <span class="bad">— threw: ${esc(threw)}</span>` : '') +
+      (ms > 40 ? ` <span class="dim">(${ms} ms)</span>` : '');
+    list.appendChild(li);
+    $('tally').innerHTML =
+      `<span class="${fail ? 'bad' : 'ok'}">${fail ? fail + ' FAILED' : 'ALL PASSING'}</span> · ` +
+      `${pass} of ${checks.length} checked`;
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  $('tally').innerHTML =
+    `<span class="${fail ? 'bad' : 'ok'}">${fail ? fail + ' of ' + checks.length + ' FAILED' : 'ALL ' + checks.length + ' CHECKS PASS'}</span>` +
+    ` <span class="dim">· over ${manifest.layers.length} layers, ${fmt(nFeat)} features and ${fmt(keys.length)} numbered lines</span>`;
+} catch (e) {
+  $('tally').innerHTML = '<span class="bad">COULD NOT RUN</span>';
+  $('err').textContent = 'The layer proofs could not read their inputs: ' + e.message;
+}
+</script>
+</body>
+</html>
