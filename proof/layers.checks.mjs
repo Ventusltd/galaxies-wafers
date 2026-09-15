@@ -22,6 +22,27 @@ function keysOf(g) {
 }
 
 /* manifest: layers/manifest.json. layers: Map id -> parsed layer file. keys: Uint32Array of all-lines.bin. */
+/* MANIFEST INTEGRITY. Added after Codex reproduced a stale entry at 3ac640e:
+   the manifest said `learned` had 0 features and one digest while the file held
+   2 features and another. buildLayerChecks compares each file with itself;
+   nothing compared the manifest with the file. These checks do. Pure: the caller
+   supplies bytes and a digest function so they run in Node and in the browser. */
+export async function manifestChecks(manifest, readBytes, sha256hex) {
+  const out = [];
+  const seen = new Set();
+  for (const l of manifest.layers) {
+    const b = await readBytes(l.file);
+    const doc = JSON.parse(new TextDecoder().decode(b));
+    const digest = await sha256hex(b);
+    out.push([`manifest ${l.id}: features equals the file's feature count`, () => l.features === doc.features.length]);
+    out.push([`manifest ${l.id}: bytes equals the file's byte length`, () => l.bytes === b.byteLength]);
+    out.push([`manifest ${l.id}: sha256 equals the file's digest`, () => l.sha256 === digest]);
+    out.push([`manifest ${l.id}: id matches the file's layer.id`, () => l.id === doc.layer.id]);
+    out.push([`manifest ${l.id}: id is not a duplicate`, () => !seen.has(l.id) && (seen.add(l.id), true)]);
+  }
+  return out;
+}
+
 export function buildLayerChecks({ manifest, layers, keys }) {
   const checks = [
     [`the manifest names substrate ${SUBSTRATE}, the frozen wafer, and lists at least one layer`,
