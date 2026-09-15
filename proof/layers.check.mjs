@@ -76,3 +76,24 @@ const sha256hex = async x => crypto.createHash('sha256').update(x).digest('hex')
   }
   console.log('manifest proof PASS — ' + mp + ' checks');
 }
+
+/* EVERY LAYER FILE IS LISTED OR OWNED. A file in layers/ that the manifest does not
+   list is checked by nothing above (found by iteration 42's count audit: tunnels.json).
+   Each such file must be named here with its owner and reason, or this proof fails.
+   A negative case runs first: an unlisted, unowned name must be reported. */
+{
+  const OWNED_OUTSIDE_MANIFEST = {
+    'tunnels.json': 'written by iteration 02 (commit 4cc78de) for its own manifest copy; not a root layer',
+  };
+  const listed = new Set(manifest.layers.map(l => l.file.split('/').pop()).filter((_, i) => manifest.layers[i].file.split('/').length === 2));
+  const unaccounted = names => names.filter(n => n.endsWith('.json') && n !== 'manifest.json' && !listed.has(n) && !(n in OWNED_OUTSIDE_MANIFEST));
+  if (unaccounted(['definitely-unlisted.json']).length !== 1) { console.error('orphan-file fixture did not fail as required'); process.exit(1); }
+  const present = fs.readdirSync(new URL('layers/', REPO)).filter(n => fs.statSync(new URL('layers/' + n, REPO)).isFile());
+  const orphans = unaccounted(present);
+  const staleOwned = Object.keys(OWNED_OUTSIDE_MANIFEST).filter(n => !present.includes(n));
+  if (orphans.length || staleOwned.length) {
+    console.error('layer files proof FAILED: unlisted and unowned ' + JSON.stringify(orphans) + '; owned but absent ' + JSON.stringify(staleOwned));
+    process.exit(1);
+  }
+  console.log(`layer files proof PASS — ${present.length} files: ${listed.size} listed in the manifest, ${Object.keys(OWNED_OUTSIDE_MANIFEST).length} owned outside it with a stated reason`);
+}
