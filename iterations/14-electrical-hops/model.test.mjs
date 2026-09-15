@@ -1,0 +1,17 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createHash}from'node:crypto';import{readFile}from'node:fs/promises';import path from'node:path';
+import {product}from'./fixture.mjs';import{BASE,SOURCES,query}from'./model.mjs';
+const modules=await Promise.all(SOURCES.map(async source=>{const bytes=process.env.ENGINE_DIRECTORY?await readFile(path.join(process.env.ENGINE_DIRECTORY,source.file)):await(async()=>{const r=await fetch(BASE+source.file,{signal:AbortSignal.timeout(15000)});assert.equal(r.status,200);return Buffer.from(await r.arrayBuffer());})();assert.equal(createHash('sha256').update(bytes).digest('hex'),source.sha256);return import(`data:text/javascript;base64,${bytes.toString('base64')}`);}));
+const[engine,topology]=modules;const index=topology.index(product);const input={from:'COWL',to:'STRA',budget:6,voltage:null};const run=patch=>query(engine,index,{...input,...patch});
+test('two-hop source search and ordered nodes',()=>{const r=run({}).route;assert.equal(r.hops,2);assert.equal(r.reached,true);assert.deepEqual(r.path.map(p=>p.to_node),['DIDC4','STRA4']);});
+test('132kV origin crosses one transformer then a circuit',()=>{const r=run({to:'DIDC',voltage:132}).route;assert.equal(r.hops,2);assert.equal(r.transformers_crossed,1);assert.equal(r.voltage_changes,1);assert.equal(r.path[0].from_node,'COWL1');});
+test('mixed-declared-voltage circuit refused',()=>{const r=run({to:'ISLE'}).route;assert.equal(r.reached,false);assert.equal(r.hops,null);assert.match(r.refusals[0].reason,/different declared voltages/);});
+test('one-hop budget excludes STRA',()=>{const r=run({budget:1});assert.equal(r.route.reached,false);assert.deepEqual(r.neighbourhood.sites.map(s=>s.code),['DIDC','PLCH']);});
+test('same site has zero hops and no path',()=>{const r=run({to:'COWL'}).route;assert.equal(r.reached,true);assert.equal(r.hops,0);assert.deepEqual(r.path,[]);});
+test('absent origin voltage distinct from unknown site',()=>{assert.match(run({voltage:33}).route.reason,/no node at33 kV|no node at 33 kV/);assert.equal(run({to:'NOWHERE'}).route,null);});
+test('planned change not in current graph',()=>{assert.equal(index.graph().has('FUTR1'),false);assert.ok(index.graph().edgesAt('STRA4').every(e=>e.kind!=='planned_change'));});
+test('placeholder MVA preserved, no headroom inferred',()=>{assert.equal(run({to:'PLCH'}).route.path[0].ratings_mva.winter,9999);});
+test('source carries unsummed per-hop impedance',()=>{assert.deepEqual(run({}).route.path[0].parameters_pct_100mva,{r_pct:.5,x_pct:5,b_pct:10});assert.equal(run({}).route.path[1].parameters_pct_100mva,null);});
+test('two-hop neighbourhood has three sites',()=>assert.equal(run({budget:2}).neighbourhood.counts.sites,3));
+test('strict interface budget, no silent type fallback',()=>{for(const budget of[-1,1.5,7,NaN,'2'])assert.throws(()=>run({budget}),/Interface policy/);});
+test('strict voltage type',()=>assert.throws(()=>run({voltage:'132'}),/Interface policy/));
+if(process.env.TRUSTED_FIXTURE)test('fixture equals separately captured proof PRODUCT',async()=>assert.deepEqual(product,JSON.parse(await readFile(process.env.TRUSTED_FIXTURE,'utf8')).c1_product));
