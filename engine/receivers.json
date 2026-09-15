@@ -1,0 +1,20 @@
+{
+ "schema": "galaxies-wafers.code-galaxy-engine.deeplink.v1",
+ "mirrors": "RECEIVERS in engine/code-galaxy-engine.mjs",
+ "receivers": [
+  {
+   "id": "galaxies-wafers",
+   "status": "canonical",
+   "carries_layers": true,
+   "url": "https://ventusltd.github.io/galaxies-wafers/",
+   "note": "the wafer with layers; Pages must be enabled for this URL to answer"
+  },
+  {
+   "id": "line-wafer-202609151339",
+   "status": "canonical",
+   "carries_layers": false,
+   "url": "https://globalgrid2050.com/testcode/202609151339/",
+   "note": "the inherited wafer without layers; reads line and to, ignores layers and zoom"
+  }
+ ]
+}

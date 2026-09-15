@@ -1,0 +1,111 @@
+/* The Line Wafer. Designed at 430 px first; the desktop is the same layout with
+   more room. One canvas, three chrome strips, nothing that scrolls the page. */
+
+:root{
+  --ink:#d8dee9; --dim:#8b93a7; --ground:#0b0d12; --edge:#1b2030;
+  --lit:#ffd54a; --beam:#5ec8f2;
+  --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  overflow:hidden; overscroll-behavior:none; -webkit-text-size-adjust:100%;
+}
+#stage{position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none}
+
+#bar{
+  position:fixed; left:0; right:0; top:0; z-index:2;
+  display:flex; gap:.75rem; align-items:baseline; flex-wrap:wrap;
+  padding:calc(var(--top) + .5rem) .75rem .5rem;
+  background:linear-gradient(#0b0d12ee,#0b0d1200); pointer-events:none;
+}
+#wordmark{letter-spacing:.14em; font-size:11px}
+.dim{color:var(--dim)}
+
+#beam{
+  position:fixed; z-index:3; left:.5rem; right:.5rem;
+  bottom:calc(var(--bot) + 3.4rem);
+  display:flex; gap:.4rem;
+}
+#beam input{
+  flex:1 1 0; min-width:0; padding:.6rem .55rem;
+  background:#11151f; color:var(--ink); border:1px solid var(--edge); border-radius:6px;
+  font:inherit; font-size:16px; /* 16px stops iOS zooming the page on focus */
+}
+#beam input:focus{outline:none; border-color:var(--beam)}
+#beam button{
+  flex:0 0 auto; padding:.6rem .9rem; border-radius:6px; cursor:pointer;
+  background:#11151f; color:var(--beam); border:1px solid var(--beam);
+  font:inherit; font-size:13px; letter-spacing:.1em;
+}
+#beam button:active{background:#16202c}
+
+#panel{
+  position:fixed; z-index:4; left:.5rem; right:.5rem;
+  bottom:calc(var(--bot) + 6.6rem);
+  max-height:52vh; overflow:auto; -webkit-overflow-scrolling:touch;
+  background:#0e121bf2; border:1px solid var(--edge); border-radius:8px;
+  padding:.75rem .8rem 1rem;
+}
+#panel[hidden]{display:none!important}
+#close{
+  position:absolute; top:.35rem; right:.4rem; width:2rem; height:2rem;
+  background:none; border:0; color:var(--dim); font:inherit; font-size:15px; cursor:pointer;
+}
+#panel h2{margin:0 .5rem .5rem 0; font-size:15px; font-weight:600; letter-spacing:.02em}
+#panel h2 .n{color:var(--lit)}
+#panel dl{display:grid; grid-template-columns:auto 1fr; gap:.15rem .6rem; margin:.5rem 0}
+#panel dt{color:var(--dim)}
+#panel dd{margin:0; overflow-wrap:anywhere}
+#panel p{margin:.5rem 0 0}
+#panel ul{margin:.35rem 0 0; padding-left:1.1rem}
+#panel li{margin:.15rem 0}
+.fam{color:var(--beam)}
+.refuse{color:var(--lit)}
+
+#foot{
+  position:fixed; z-index:2; left:0; right:0; bottom:0;
+  display:flex; gap:.15rem; flex-direction:column;
+  padding:.35rem .75rem calc(var(--bot) + .35rem);
+  background:linear-gradient(#0b0d1200,#0b0d12ee); pointer-events:none;
+  font-size:10.5px;
+}
+#hint{text-align:left}
+#foot a{color:var(--beam); pointer-events:auto; text-decoration:underline}
+
+@media (min-width:760px){
+  #beam{left:auto; right:1rem; width:26rem; bottom:calc(var(--bot) + 2.9rem)}
+  #foot{flex-direction:row; gap:.6rem; justify-content:space-between}
+  #hint{text-align:right}
+  #panel{left:1rem; right:auto; width:26rem; bottom:calc(var(--bot) + 2.5rem); max-height:66vh}
+  #foot{font-size:11px}
+}
+
+/* ── iteration 09: the arrival card (Atlas grammar: black, monospace, cyan name, amber value) and the emit panel ── */
+#leftcol{position:fixed;z-index:6;left:.5rem;top:calc(var(--top) + 2.2rem);display:flex;flex-direction:column;align-items:flex-start;gap:.4rem;max-width:min(24rem,calc(100% - 7rem))}
+#linkcard{position:relative;
+  background:#000;border:1px solid #00ffff55;border-radius:4px;padding:.45rem .6rem;font-size:12px}
+#linkcard[hidden]{display:none!important}
+#linkcard[data-state="refused"]{border-color:#ff8a80}
+#linkcard .lctitle{color:#00ffff;font-size:13px;display:block;margin-right:1.4rem}
+#linkcard[data-state="refused"] .lctitle{color:#ff8a80}
+#linkcard .lcwhy{color:#ffae00;margin:.25rem 0}
+#linkcard .lcdim{color:#666}
+#linkcard .lcdrop{color:#ffae00}
+#linkcard dl{display:grid;grid-template-columns:auto 1fr;gap:.1rem .5rem;margin:.3rem 0 0}
+#linkcard dt{color:#888}#linkcard dd{margin:0;overflow-wrap:anywhere}
+#linkcard .lcclose{position:absolute;top:.2rem;right:.3rem;background:none;border:0;color:#888;font:inherit;cursor:pointer}
+#emit{font-size:12px;width:100%}
+#emit[hidden]{display:none!important}
+#emitToggle{background:#11151f;color:#ff2bd6;border:1px solid #ff2bd6;border-radius:6px;padding:.35rem .7rem;font:inherit;letter-spacing:.1em;cursor:pointer}
+#emitBody{margin-top:.4rem;background:#0e121bf4;border:1px solid var(--edge);border-radius:8px;padding:.5rem .6rem;max-height:50vh;overflow:auto}
+#emitBody[hidden]{display:none!important}
+.egroup{color:var(--dim);font-size:10.5px;letter-spacing:.08em;margin:.45rem 0 .2rem}
+.erow{display:flex;gap:.35rem}
+#emitBody input,#emitBody select{flex:1 1 0;min-width:0;width:100%;background:#11151f;color:var(--ink);border:1px solid var(--edge);border-radius:5px;font:inherit;padding:.3rem .4rem}
+#emitBody select{margin-top:.35rem}
+#emitCopy{background:none;border:1px solid var(--beam);color:var(--beam);border-radius:4px;font:inherit;font-size:10px;padding:0 .35rem;cursor:pointer}
+.eurl{overflow-wrap:anywhere;color:var(--beam)}.eurl.eerr{color:#ff8a80}
+.estat{margin-top:.5rem;font-size:10.5px}.estat.OK{color:#7fd6a2}.estat.FAIL{color:#ff8a80}
