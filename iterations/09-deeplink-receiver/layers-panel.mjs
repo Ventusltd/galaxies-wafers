@@ -26,6 +26,7 @@
 import { place } from '../../lib.mjs';
 /* Iteration 09: layers come from the engine's parse, and dropped ids are reported, not swallowed. */
 import { LINK, ROOT, reportLayers } from './receiver.mjs';
+import { parseDeepLink } from '../../engine/code-galaxy-engine.mjs';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
@@ -253,6 +254,12 @@ function writeLayersToURL() {
 function requestedLayers() {
   if (LINK.ok) return LINK.layers ?? null;
   if (!/^missing /.test(LINK.why || '')) return null;
+  /* parseDeepLink stops at the missing line before it checks to and zoom (Codex's
+     review, 19:10Z), so check them here with the engine's own rules: a layers-only
+     link with a malformed to or an out-of-range zoom loads nothing. */
+  const withLine = new URL(location.href);
+  withLine.searchParams.set('line', '1');
+  if (!parseDeepLink(withLine.href).ok) return null;
   const raw = new URL(location.href).searchParams.get('layers');
   return raw ? [...new Set(raw.split(',').map(x => x.trim()).filter(Boolean))] : null;
 }
