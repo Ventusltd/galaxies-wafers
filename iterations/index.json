@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 37,
+ "count": 38,
  "iterations": [
   {
    "n": 1,
@@ -34,9 +34,9 @@
    "dir": "04-400kv-engine",
    "slug": "400kv-engine",
    "title": "400kV Engine Mode — module routes restyled as grid voltage",
-   "commit": "17032d46458b6ad0a77080348a690942717a6ac0",
-   "committed": "2026-09-15T21:33:33+01:00",
-   "subject": "iterations/04: routes crossing the top or bottom edge are drawn, not dropped"
+   "commit": "67494ddea8a33185fbbdce7fd6baa1f2659a52f8",
+   "committed": "2026-09-15T21:39:27+01:00",
+   "subject": "iterations/04: collapsed Questions panel (owner's three questions and machine detail)"
   },
   {
    "n": 5,
@@ -376,6 +376,15 @@
    "commit": "f86669a2f578b4ab7b7d7b0d6a921b7b8b0ad86a",
    "committed": "2026-09-15T21:34:50+01:00",
    "subject": "iteration 43 How the Estate Grew: 19 registry snapshots counted, diffed, drawn and checked"
+  },
+  {
+   "n": 44,
+   "dir": "44-vaccine-immunity",
+   "slug": "vaccine-immunity",
+   "title": "Immunity",
+   "commit": "ae39fb02ce7a36234af892df795a71a78cf3ec52",
+   "committed": "2026-09-15T21:40:04+01:00",
+   "subject": "iteration 44 Immunity: the cvaa vaccine registry as a ring, hashed in the browser"
   }
  ]
 }
