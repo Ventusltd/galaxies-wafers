@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Same Name, Same Body?</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="snsb.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>SAME NAME, SAME BODY?</h1>
+    <p class="dim">Two kinds of repetition in the estate's code, kept apart. <b>Same name</b>: function families that carry one recorded name. <b>Same body</b>: families whose ordered sequence of permanent line numbers is identical. One line number is one distinct line of text, so an identical sequence is identical code in the same order. Everything below is counted in your browser from the numbered database the wafer loads.</p>
+  </header>
+
+  <section class="layers" aria-label="Layers">
+    <label class="layer"><input type="checkbox" data-layer="compute"><span id="lbl-compute" data-base-label="Compare every family · families.json + lines.bin">Compare every family · families.json + lines.bin [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="ground"><span id="lbl-ground" data-base-label="Dark wafer ground · all-lines.bin">Dark wafer ground · all-lines.bin [WAIT]</span></label>
+  </section>
+  <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+  <p id="phase" class="dim small">WAIT — nothing is fetched until you tick a layer. Tick <b>Compare every family</b> to begin.</p>
+
+  <h2>THE FOUR CASES</h2>
+  <div id="cases" class="cases">
+    <div class="case" data-c="0"><span class="sw c0"></span><span class="lab">same name, same body · true copies</span><span class="v" id="cv0">—</span><span class="track"><span class="fill c0" id="cf0"></span></span></div>
+    <div class="case" data-c="1"><span class="sw c1"></span><span class="lab">different names, same body · renamed copies</span><span class="v" id="cv1">—</span><span class="track"><span class="fill c1" id="cf1"></span></span></div>
+    <div class="case" data-c="2"><span class="sw c2"></span><span class="lab">same name, different bodies · a name hiding different code</span><span class="v" id="cv2">—</span><span class="track"><span class="fill c2" id="cf2"></span></span></div>
+    <div class="case" data-c="3"><span class="sw c3"></span><span class="lab">unique name, unique body</span><span class="v" id="cv3">—</span><span class="track"><span class="fill c3" id="cf3"></span></span></div>
+    <div class="case" data-c="4"><span class="sw c4"></span><span class="lab">no name recorded · "(anonymous)"</span><span class="v" id="cv4">—</span><span class="track"><span class="fill c4" id="cf4"></span></span></div>
+  </div>
+  <p class="dim small">Each family is counted once, in the first case that fits, in the order listed. "(anonymous)" is a placeholder for code with no name, so it cannot share a name and is counted apart. Bars are families, not verdicts.</p>
+  <p id="bodyline" class="summary">WAIT — tick Compare every family.</p>
+
+  <h2>THE EARLIER FINDING, CHECKED</h2>
+  <p class="dim small">An earlier estate note said one helper name had many distinct bodies across many sites while another had few bodies across hundreds of sites, and that ranking by how often a name appears is backwards for finding copies. Its figures are not typed here; this is what the data says now.</p>
+  <p id="finding" class="summary">WAIT — tick Compare every family.</p>
+
+  <h2>A NAME GROUP ON THE WAFER</h2>
+  <form id="pick" class="pick" autocomplete="off">
+    <input id="name" placeholder="a function name, exactly" aria-label="function name" autocapitalize="off" spellcheck="false">
+    <button type="submit">SHOW</button>
+  </form>
+  <div class="plane">
+    <canvas id="ground" aria-hidden="true"></canvas>
+    <canvas id="plane" aria-label="The wafer. Each distinct body of the selected name is lit in its own colour. Drag to pan, pinch or wheel to zoom, tap a lit line to read its body."></canvas>
+    <button type="button" id="fit" class="fit">fit</button>
+    <div id="drawn" class="drawn dim"></div>
+  </div>
+  <div id="legend" class="legend"><p class="dim small">Pick a name from a list below, or type one. Each distinct body gets its own colour.</p></div>
+  <div class="pager" id="legendpager" hidden>
+    <button type="button" id="lprev">◀ bodies</button><span id="lpage" class="dim small"></span><button type="button" id="lnext">bodies ▶</button>
+  </div>
+
+  <section id="card" class="card" aria-live="polite">
+    <p class="dim">Tap a body in the legend or a lit line on the wafer to read it.</p>
+  </section>
+
+  <h2>RANKED · TOP <span id="topn">40</span></h2>
+  <div class="seg" id="tabs" role="group" aria-label="Which ranking">
+    <button type="button" data-t="copied" aria-pressed="true">most copied bodies</button>
+    <button type="button" data-t="overloaded" aria-pressed="false">most overloaded names</button>
+  </div>
+  <p id="rankhow" class="dim small">WAIT — tick Compare every family.</p>
+  <ol id="rows" class="rows"></ol>
+  <div class="pager">
+    <button type="button" id="prev">◀ prev</button><span id="page" class="dim small">page — of —</span><button type="button" id="next">next ▶</button>
+  </div>
+
+  <details id="questions" class="questions">
+    <summary>Questions</summary>
+    <dl>
+      <dt>1. How does this help draw a system or a single-line diagram?</dt>
+      <dd id="q1">It draws no busbar, feeder, transformer, cable route, protection or earthing itself: none yet. What it guards is the drawing. A distance or voltage-drop function copied into two places and edited in only one will give two answers, and the same diagram drawn twice may disagree; a name shared by different bodies may hide different physics behind one word. Names in the estate that sound like drawing physics, with their distinct bodies (name-match inference): <span id="q1names">not yet known</span>.</dd>
+      <dt>2. What is this code used for?</dt>
+      <dd id="q2">This page: <code>worker.js</code> <code>fnv</code> (hash to bucket), <code>sameSeq</code> (exact confirmation), <code>csr</code>, <code>intern</code>, <code>spearman</code>; drawn by <code>app.mjs</code>. It reads <code>families.json</code> fields <code>name</code>, <code>lineOffset</code>, <code>lineCount</code>, <code>files</code>, <code>repos</code>, <code>block</code>, <code>n</code> and <code>lines.bin</code>, from the numbered database <span id="q2prov">not yet known</span>. The selected group's code sits in register blocks <span id="q2blocks">not yet known: pick a name</span> (the family's <code>block</code> field).</dd>
+      <dt>3. Where does it lead next?</dt>
+      <dd id="q3">To a person reading two bodies side by side with the CODE button and deciding whether to consolidate them. Never automatically: identical text can serve different callers, and different text can be a deliberate fix. <span id="q3now">not yet known</span></dd>
+    </dl>
+  </details>
+  <p id="machine" class="machine small">Machine detail · not yet known: tick Compare every family.</p>
+
+  <footer class="dim small">
+    <p>Loading, as Grid Atlas does it: every layer starts unticked and unfetched; ticking fetches its files through one queue of at most 3 requests, each with a 15 s timeout; a file is fetched once and shared; a failed fetch is retried by ticking again; unticking hides and keeps the data. The comparison runs in a Web Worker, so the page scrolls while it counts. Each source is one whole file, so there are no tiles: the ground is one GPU draw of the numbered lines, and only the selected name's lines are lit, and only those inside the view. Rows, legend and card exist once and are re-filled; no element is created per line or per family. Body colours come from one fixed palette in body order; bodies outside the coloured page are drawn grey.</p>
+    <p id="prov"></p>
+    <p><a href="../">every version</a></p>
+  </footer>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
