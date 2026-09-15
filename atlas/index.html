@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>The Ground — Grid Atlas's own layers, lifted whole</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.5' fill='none' stroke='%230054ff' stroke-width='2'/%3E%3Ccircle cx='8' cy='8' r='2' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css">
+<style>
+  :root{--ink:#d8dee9;--dim:#8b93a7;--ground:#0b0d12;--edge:#1b2030;--beam:#5ec8f2;
+        --top:env(safe-area-inset-top,0px);--bot:env(safe-area-inset-bottom,0px)}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;overflow:hidden}
+  #map{position:fixed;inset:0}
+  #bar{position:fixed;left:0;right:0;top:0;z-index:3;display:flex;gap:.7rem;align-items:baseline;flex-wrap:wrap;
+       padding:calc(var(--top) + .5rem) .75rem .5rem;background:linear-gradient(#0b0d12ee,#0b0d1200);pointer-events:none}
+  #wordmark{letter-spacing:.14em;font-size:11px} .dim{color:var(--dim)}
+  #layers{position:fixed;z-index:5;right:.5rem;top:calc(var(--top) + 2.4rem);max-width:min(22rem,calc(100% - 1rem))}
+  #layersToggle{float:right;background:#11151f;color:var(--beam);border:1px solid var(--beam);border-radius:6px;
+       padding:.35rem .7rem;font:inherit;letter-spacing:.1em;cursor:pointer}
+  #layersBody{clear:both;margin-top:.4rem;max-height:62vh;overflow:auto;background:#0e121bf4;border:1px solid var(--edge);
+       border-radius:8px;padding:.5rem .6rem}
+  #layersBody[hidden]{display:none!important}
+  .lgroup{color:var(--dim);font-size:10.5px;letter-spacing:.08em;margin:.55rem 0 .15rem;text-transform:uppercase}
+  .lrow{display:flex;gap:.45rem;align-items:center;margin:.15rem 0}
+  .ltag{font-size:10.5px}.ltag.WAIT{color:var(--dim)}.ltag.LOAD{color:#ffd54a}.ltag.OK{color:#7fd6a2}.ltag.EMPTY{color:#b39ddb}.ltag.FAIL{color:#ff8a80}
+  #foot{position:fixed;z-index:2;left:0;right:0;bottom:0;padding:.3rem .75rem calc(var(--bot) + .3rem);font-size:10px;
+        background:linear-gradient(#0b0d1200,#0b0d12ee);pointer-events:none;display:flex;flex-direction:column;gap:.1rem}
+  .maplibregl-ctrl-attrib{font:10px ui-monospace,monospace;background:#0b0d12cc!important;color:var(--dim)}
+  .maplibregl-ctrl-attrib a{color:var(--beam)}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<header id="bar"><span id="wordmark">THE GROUND</span><span id="count" class="dim">Grid Atlas's own layer engine, lifted whole; nothing redrawn by hand</span></header>
+<section id="layers"><button id="layersToggle" type="button">LAYERS</button><div id="layersBody" hidden></div></section>
+<footer id="foot">
+  <span class="dim">engine and layers: Ventus Core, the Grid Atlas engine (globalgrid2050/repd_grid_atlasv8/ventus-corev8engine.js and the v9 release 202608300453), lifted as it stands: colours, widths, filters, one empty source per layer, hydrate on tick, one writer of state · data fetched from that release · basemap CARTO dark matter · © OpenStreetMap contributors where the data is theirs</span>
+  <span class="dim">physics drawing via computers, not engineering: anything above 100 kW needs a chartered electrical engineer, manufacturer supervision, the applicable standards and finite element analysis where required; this is the substrate, not that study</span>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script>
+/* THE GROUND. Grid Atlas draws the UK's published network with one engine: a
+   MapLibre map over CARTO dark matter, and an array of layer configurations,
+   each a colour, a width or a radius expression, a data URL and a preload flag.
+   This page lifts that array as it stands in the v9 release and drives the
+   same engine with it. Nothing is redrawn by hand: the 400 kV line is #0054ff
+   at 2.5 px because that is what the Atlas says it is. Layers hydrate on tick,
+   in the Atlas's own state vocabulary. */
+const RELEASE = 'https://ventusltd.github.io/gridatlas/atlas/releases/202608300453-atlas-v9/';
+const ORIGIN  = 'https://globalgrid2050.com/';   /* the v8 origin: root-relative layer files live beside repd_grid_atlasv8 */
+const url = u => u.startsWith('/') ? ORIGIN + u.slice(1) : RELEASE + u;
+
+/* Lifted from gridatlas/atlas/releases/202608300453-atlas-v9/index.html, the
+   `ukConfig` groups, values verbatim. Groups whose data the Atlas serves from
+   the release or its origin are included; groups that need the Atlas's own
+   DuckDB/Parquet plane (REPD, heavy industry) are not, because that plane is a
+   different engine and lifting the config without it would draw nothing. */
+const GROUPS = [
+ { group: "Topology (GeoJSON)", layers: [
+  { id: "400",  label: "400kV", color: "#0054ff", type: "line", width: 2.5, url: "data/grid_400kv.geojson" },
+  { id: "275",  label: "275kV", color: "#ff0000", type: "line", width: 2.0, url: "data/grid_275kv.geojson" },
+  { id: "220",  label: "220kV", color: "#ff9900", type: "line", width: 1.8, url: "data/grid_220kv.geojson" },
+  { id: "132",  label: "132kV", color: "#00cc00", type: "line", width: 1.5, url: "data/grid_132kv.geojson" },
+  { id: "66",   label: "66kV",  color: "#b200ff", type: "line", width: 1.2, url: "data/grid_66kv.geojson" },
+  { id: "subs", label: "Subs",  color: "#ffffff", type: "point", radius: ['interpolate', ['linear'], ['zoom'], 5, 3, 10, 5, 14, 10, 18, 22], url: "data/grid_substations.geojson" } ] },
+ { group: "Assets (GeoJSON)", layers: [
+  { id: "nuc",  label: "Nuclear",   color: "#39ff14", type: "point", radius: 4.5, url: "data/power_plants.geojson", filter: ['==', ['get', 'source'], 'nuclear'] },
+  { id: "gas",  label: "Gas",       color: "#ff4500", type: "point", radius: 4.5, url: "data/power_plants.geojson", filter: ['!=', ['get', 'source'], 'nuclear'] },
+  { id: "ind",  label: "Industry",  color: "#ff6600", type: "point", radius: 4.5, url: "data/industrial_offtakers.geojson" },
+  { id: "dc",   label: "Data Ctrs", color: "#00ffff", type: "point", radius: 4.5, url: "data/datacentres.geojson" },
+  { id: "air",  label: "Airports",  color: "#ff00ff", type: "point", radius: 4.5, url: "data/airports.geojson" },
+  { id: "rail", label: "Railways",  color: "#ffd700", type: "point", radius: 4.5, url: "data/railways.geojson" } ] },
+ { group: "Transit (GeoJSON)", layers: [
+  { id: "elizabeth", label: "Elizabeth Line", color: "#60399E", type: "point", radius: 5, url: "data/elizabeth_line.geojson" },
+  { id: "lu",    label: "London Underground", color: "#e32017", type: "point", radius: 5, url: "data/london_underground.geojson" },
+  { id: "mainline_rail", label: "UK Mainline Railways", color: "#ff8800", type: "line", width: 1.5, url: "/uk_mainline_railways.geojson" },
+  { id: "hs2",   label: "HS2", color: "#2c6fad", type: "point", radius: 4, url: "data/hs2.geojson" },
+  { id: "eurostar_route", label: "Eurostar (HS1) UK & Europe", color: "#001489", type: "line", width: 2.5, url: "data/eurostar.geojson", filter: ['==', ['get', 'type'], 'route'] },
+  { id: "eurostar_station", label: "Eurostar Stations UK & Europe", color: "#ffd700", type: "point", radius: 5.5, url: "data/eurostar.geojson", filter: ['==', ['get', 'type'], 'eurostar_station'] } ] },
+ { group: "Highway Infrastructure", layers: [
+  { id: "motorways", label: "Motorways", color: "#0054ff", type: "line", width: 2.5, url: "/uk_motorways.geojson" },
+  { id: "trunk_roads", label: "Major A-Roads (Trunk)", color: "#00cc00", type: "line", width: 1.8, url: "/uk_trunk_roads.geojson" },
+  { id: "primary_roads", label: "A-Roads (Primary)", color: "#ff4400", type: "line", width: 1.2, url: "/uk_primary_roads.geojson" },
+  { id: "motorway_services", label: "Motorway Services", color: "#ff00ff", type: "point", radius: 5.5, url: "data/motorway_services.geojson" } ] },
+ { group: "Global Data Backbone", layers: [
+  { id: "subsea_data_cables", label: "Subsea Data Cables (Fibre)", color: "#00e5ff", type: "line", width: 1.5, url: "data/subsea_data_cables.geojson" } ] },
+ { group: "EV (GeoJSON)", layers: [
+  { id: "ev", label: "EV Rapid (100kW+)", color: "#00ff88", type: "point", radius: 5, url: "data/ev_chargers.geojson" } ] }
+];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const state = new Map();
+for (const g of GROUPS) for (const l of g.layers) state.set(l.id, { status: 'WAIT', on: false, n: 0 });
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  center: [-2.5, 54.3], zoom: 5.2, attributionControl: true
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+/* The Atlas's own hydration: an empty source per layer, created at load with
+   visibility none; a fetch on tick; setData; the state written by one function. */
+map.on('load', () => {
+  for (const g of GROUPS) for (const l of g.layers) {
+    map.addSource('src-' + l.id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    const base = { id: 'l-' + l.id, source: 'src-' + l.id, layout: { visibility: 'none' } };
+    if (l.filter) base.filter = l.filter;
+    if (l.type === 'line') map.addLayer({ ...base, type: 'line', paint: { 'line-color': l.color, 'line-width': l.width, 'line-opacity': 0.9 } });
+    else map.addLayer({ ...base, type: 'circle', paint: { 'circle-color': l.color, 'circle-radius': l.radius, 'circle-opacity': 0.85, 'circle-stroke-color': '#0b0d12', 'circle-stroke-width': 0.6 } });
+  }
+  renderPanel();
+  readURL();
+});
+
+function setState(id, status, extra) { Object.assign(state.get(id), { status }, extra || {}); renderPanel(); }
+
+async function hydrate(l) {
+  const s = state.get(l.id);
+  if (s.status === 'OK' || s.status === 'LOAD') return;
+  setState(l.id, 'LOAD');
+  try {
+    const r = await fetch(url(l.url), { cache: 'default' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const doc = await r.json();
+    const feats = doc.features || [];
+    map.getSource('src-' + l.id).setData({ type: 'FeatureCollection', features: feats });
+    setState(l.id, feats.length ? 'OK' : 'EMPTY', { n: feats.length, why: feats.length ? '' : 'the file holds no features' });
+  } catch (e) { setState(l.id, 'FAIL', { why: e.message }); }
+}
+
+function toggle(l, on) {
+  state.get(l.id).on = on;
+  map.setLayoutProperty('l-' + l.id, 'visibility', on ? 'visible' : 'none');
+  if (on) hydrate(l);
+  writeURL(); renderPanel();
+}
+
+function renderPanel() {
+  $('layersBody').innerHTML = GROUPS.map(g => `<div class="lgroup">${esc(g.group)}</div>` + g.layers.map(l => {
+    const s = state.get(l.id);
+    const tag = s.status === 'OK' ? `OK · ${s.n.toLocaleString('en-GB')}` : s.status + (s.why ? ' · ' + esc(s.why) : '');
+    return `<div class="lrow"><input type="checkbox" id="L-${esc(l.id)}" ${s.on ? 'checked' : ''}>
+      <label for="L-${esc(l.id)}" style="color:${esc(l.color)}">${esc(l.label)} <span class="ltag ${s.status}">[${tag}]</span></label></div>`;
+  }).join('')).join('');
+  for (const g of GROUPS) for (const l of g.layers) $('L-' + l.id).addEventListener('change', e => toggle(l, e.target.checked));
+  const on = [...state.values()].filter(s => s.on).length, ok = [...state.values()].filter(s => s.status === 'OK').length;
+  $('count').textContent = `${GROUPS.reduce((a, g) => a + g.layers.length, 0)} layers lifted from Grid Atlas v9 · ${on} on · ${ok} drawn`;
+}
+$('layersToggle').addEventListener('click', () => { $('layersBody').hidden = !$('layersBody').hidden; });
+
+/* URL: only layer ids the config names travel; unknown ids are dropped. */
+function writeURL() {
+  const on = []; for (const g of GROUPS) for (const l of g.layers) if (state.get(l.id).on) on.push(l.id);
+  const u = new URL(location.href);
+  on.length ? u.searchParams.set('layers', on.join(',')) : u.searchParams.delete('layers');
+  history.replaceState(null, '', u.pathname + u.search.replace(/%2C/gi, ',') + u.hash);
+}
+function readURL() {
+  const raw = new URL(location.href).searchParams.get('layers') || '';
+  const ids = new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
+  for (const g of GROUPS) for (const l of g.layers) if (ids.has(l.id)) { $('L-' + l.id).checked = true; toggle(l, true); }
+}
+</script>
+</body>
+</html>
