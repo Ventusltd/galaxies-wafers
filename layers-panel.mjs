@@ -1,47 +1,95 @@
-/* layers-panel.mjs — layers over the inherited wafer, in Grid Atlas's grammar.
+/* layers-panel.mjs — layers over the wafer, in Grid Atlas's grammar.
  *
- * The wafer page (app.mjs, lib.mjs) is inherited unchanged but for one hook.
- * This file adds a transparent canvas above it and a panel of layers, and
- * touches nothing the wafer draws. Remove this script tag and the wafer is
- * exactly what it was.
+ * ROOT PROMOTION (iteration 38). This root file is now
+ * iterations/22-fast-zoom/layers-panel.mjs (whose description follows), with:
+ *  - paths read from this directory, and the band tiles read from the root's own
+ *    layers/tiles/<id>/index.json (built by build/tile_layer.py: the same law and
+ *    the same band files the iteration served from its own tiles/);
+ *  - the dark-pixels drawing of iterations/21-dark-pixels/layers-panel.mjs, used
+ *    when the reader ticks "dark ground" (off by default): only charted keys lit,
+ *    with Grid Atlas radius, casing, opacity and glow by zoom;
+ *  - the tap handed to the code card (iterations/31-code-card-everywhere/
+ *    layers-panel.mjs): this file answers window.__layers.pickAt and no longer
+ *    opens its inspect box under a finger, which also removes the defect of that
+ *    tap's click ticking a checkbox that appeared beneath it;
+ *  - the Questions panel of iterations/22-fast-zoom/questions.mjs, rewritten
+ *    for this page.
  *
- * Layers are files in layers/, listed by layers/manifest.json. Each is a
- * CodeFeatureCollection whose geometry is permanent keys, never coordinates, so
- * every mark is placed by the wafer's own frozen law and cannot disagree with
- * the ground. States follow the Atlas: WAIT until ticked, LOAD while fetching,
- * OK when drawn, EMPTY when loaded with nothing in it, FAIL with its reason.
+ * iteration 22, FAST ZOOM. Layers over the wafer, loaded the way Grid Atlas
+ * loads them, and drawn so that zooming stays cheap.
  *
- * FOLLOWING THE CAMERA. app.mjs exposes exactly one read-only hook,
- * window.__wafer: a getter for its live `view` and a set of `onDraw` listeners
- * it calls at the end of every render(). The overlay registers there, so it
- * repaints in the same frame as the wafer and maps world to screen with the
- * wafer's own formula. An earlier version re-derived only the initial frame and
- * drifted off the points the moment anyone panned; that is what this replaces.
+ * Copied from the root layers-panel.mjs, then changed:
  *
- * TAP TO INSPECT. A tap on the wafer that lands within 14 px of a drawn layer
- * feature shows that feature's properties and its layer's evidence. The wafer
- * still receives the same tap and does whatever it does with it; nothing here
- * captures, prevents or stops the event.
+ * LOADING, AS GRID ATLAS DOES IT (repd_grid_atlasv8/ventus-corev8engine.js,
+ * handleLayerToggle, hydrateLayer, FetchQueue, fetchAndParseGeoJSON, updateUIState):
+ *  1. Every layer has a row from the start and nothing is fetched until it is
+ *     ticked; only a manifest entry with preload: true loads at start.
+ *  2. Per-layer runtime state {loaded, loading}: a hydrate returns at once when
+ *     either is set, so repeated taps never fetch twice.
+ *  3. One FetchQueue (MAX_FETCH at once) for all network work; every fetch has a
+ *     FETCH_TIMEOUT_MS abort; one promise per URL is shared, and a failed fetch
+ *     is removed from that cache so a retry can happen.
+ *  4. A state change writes only that row's tag and note (textContent). The
+ *     list is built once and never re-rendered.
+ *  5. Unticking hides a layer; its data stays in memory and is not fetched
+ *     again when ticked, unless the memory ceiling had to release it.
+ *  6. Features are drawn on one canvas, never as DOM nodes.
+ *  7. A tiled layer has a minimum zoom: below it the layer is neither drawn nor
+ *     fetched, so density is decided by zoom.
+ *
+ * INFINITE, BUT NOT AT ONCE. A layer with more features than the tile set's
+ * threshold is served from layers/tiles/ in radius bands (build_tiles.py: band =
+ * isqrt(key) // S). Only bands that intersect the screen are fetched and drawn.
+ * Everything in memory is counted against FEATURE_CAP; when a fetch would cross
+ * it, hidden layers are released first (least recently used), then bands of a
+ * tiled layer farthest from the view. A whole layer that cannot fit even then is
+ * REFUSED on its row with the arithmetic.
+ *
+ * DRAWING. World positions are placed once per layer or band into Float32Arrays;
+ * a frame does only x * zoom + offset, with a bounding box per route. While the
+ * wafer reports a gesture the last raster is carried by a CSS transform; when it
+ * can no longer cover the screen it is redrawn with every THIN_STEP-th vertex, and
+ * full detail returns on the wafer's settle frame.
  */
-import { place } from './lib.mjs';
+import { placeAll } from './lib.mjs';
+
+const ROOT = './';
+/* A layer with more features than this is read by radius band from
+   layers/tiles/<id>/index.json; the threshold iterations/22-fast-zoom/build_tiles.py used. */
+export const TILE_OVER = 5000;
+const tileIndexPath = id => `${ROOT}layers/tiles/${encodeURIComponent(id)}/index.json`;
+export const MAX_FETCH = 3;
+export const FETCH_TIMEOUT_MS = 15000;
+export const THIN_STEP = 4;
+/* The ceiling, chosen from measurement (numbers in the iteration 22 commit
+   message): the largest layer, 41,286 point features, measured 2.3 ms median
+   script per full-detail overlay draw and held the root page to 360 ms frames on
+   Chrome at 390x844. Scaling that linearly, 20,000 features is about 1 ms of
+   script, leaving a phone several times slower inside a 16.7 ms frame. */
+export const FEATURE_CAP = 20000;
+/* A tiled layer is drawn and fetched only from the zoom at which the screen's
+   longer side spans at most this many band widths. */
+export const TILE_SPAN_BANDS = 3;
 
 const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => Number(n).toLocaleString('en-GB');
 
-const state = new Map();   /* id -> {status, doc, why} */
+const state = new Map();   /* id -> runtime state, see freshState() */
 let manifest = null;
-let droppedIds = [];   /* layer ids asked for in the URL that the manifest does not name */
+let tileSet = null;        /* {tile_over, layers: {id: index path}}, built from the manifest by TILE_OVER */
 let picked = null;         /* {layer, feature} currently inspected */
+let clock = 0;             /* use order, for least-recently-used release */
+export const LOADER = { evictions: 0, keysDrawn: 0, fetches: 0, rasters: 0, carried: 0 };
 
-const TAP_SLOP = 7;        /* px of movement under which a pointer-up is a tap */
-const PICK_REACH = 14;     /* px within which a tap picks a layer feature */
+const PICK_REACH = 14;
+
+const freshState = () => ({ on: false, loaded: false, loading: false, status: 'WAIT', why: '', doc: null, cache: null, used: 0, tiles: null });
 
 /* ── the panel ───────────────────────────────────────────────────────────── */
 
 const panel = document.createElement('section');
 panel.id = 'layers';
-panel.innerHTML = `<button id="layersToggle" type="button">LAYERS</button><div id="layersBody" hidden><div id="layersInspect" hidden></div><div id="layersList"></div></div>`;
+panel.innerHTML = `<button id="layersToggle" type="button">LAYERS</button><div id="layersBody" hidden><div id="layersInspect" hidden></div><div id="layersMeter" class="lnote lmeter"></div><div id="layersRule" class="lnote lmeter"></div><div id="layersWarn" class="lnote lwarn" hidden></div><div id="layersList"></div></div>`;
 document.body.appendChild(panel);
 
 const style = document.createElement('style');
@@ -52,7 +100,7 @@ style.textContent = `
   padding:.35rem .7rem;font:inherit;letter-spacing:.1em;cursor:pointer}
 #layersBody{clear:both;margin-top:.4rem;max-height:60vh;overflow:auto;background:#0e121bf4;
   border:1px solid #1b2030;border-radius:8px;padding:.5rem .6rem}
-#layersBody[hidden],#layersInspect[hidden]{display:none!important}
+#layersBody[hidden],#layersInspect[hidden],#layersWarn[hidden]{display:none!important}
 #layersInspect{border-bottom:1px solid #1b2030;padding-bottom:.45rem;margin-bottom:.3rem;position:relative}
 #layersInspect h3{margin:.1rem 1.6rem .25rem 0;font-size:12.5px;font-weight:600}
 #layersInspect dl{display:grid;grid-template-columns:auto 1fr;gap:.1rem .5rem;margin:.3rem 0}
@@ -66,10 +114,10 @@ style.textContent = `
 .lrow input{margin-top:.15rem}
 .lname{flex:1}
 .ltag{font-size:10.5px}
-.ltag.WAIT{color:#8b93a7}.ltag.LOAD{color:#ffd54a}.ltag.OK{color:#7fd6a2}
-.ltag.EMPTY{color:#b39ddb}.ltag.FAIL{color:#ff8a80}
+.ltag.WAIT,.ltag.QUEUE{color:#8b93a7}.ltag.LOAD{color:#ffd54a}.ltag.OK{color:#7fd6a2}
+.ltag.EMPTY{color:#b39ddb}.ltag.FAIL{color:#ff8a80}.ltag.REFUSED{color:#ffd54a}
 .lnote{color:#8b93a7;font-size:10.5px;margin:.1rem 0 .35rem 1.5rem}
-.lwarn{color:#ffd54a;margin-left:0}
+.lmeter,.lwarn{margin-left:0}.lwarn{color:#ffd54a}
 .ecard{border:1px solid #1b2030;border-radius:6px;padding:.35rem .45rem;margin:.3rem 0;background:#11151f}
 .ehead .esym{font-weight:700}.ename{color:#e7ebf3}
 .efns{color:#8b93a7;font-size:10.5px;margin:.1rem 0 .2rem}
@@ -77,7 +125,7 @@ style.textContent = `
 .ekv{font-size:10.5px;word-break:break-word}.ek{color:#8b93a7}.ev{color:#e7ebf3}
 .eschema{color:#7fd6a2}.enone{color:#b39ddb}
 .elinks{font-size:10.5px;margin-top:.15rem}.elink{color:#5ec8f2}
-#overlay{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+#overlay{position:fixed;left:0;top:0;pointer-events:none;z-index:1;transform-origin:50% 50%;will-change:transform}
 `;
 document.head.appendChild(style);
 
@@ -88,11 +136,24 @@ const ctx = overlay.getContext('2d');
 
 $('layersToggle').addEventListener('click', () => { $('layersBody').hidden = !$('layersBody').hidden; });
 
-/* Why a layer is EMPTY, in the layer's own words. Builders record it under
-   stats.why (the MSI builders) or stats.reason; a layer that found things in
-   source it could not anchor lists them under stats.unanchored. Scope and index
-   limits follow, because an empty result is only as wide as what was searched.
-   With none of these the page says so rather than inventing a reason. */
+const node = (tag, text, cls) => {
+  const n = document.createElement(tag);
+  if (text != null) n.textContent = String(text);
+  if (cls) n.className = cls;
+  return n;
+};
+
+/* The one line that says what moving frames do, written from the constants. */
+{
+  const thin = $('thin');
+  if (thin) {
+    const settle = window.__wafer?.settleMs;
+    thin.textContent = `while moving: the wafer is a cached image and layers keep every ${THIN_STEP}th route vertex and point; ` +
+      (settle ? `full detail ${settle} ms after the gesture stops` : 'full detail when the gesture stops');
+  }
+}
+
+/* Why a layer is EMPTY, in the layer's own words (unchanged from the root file). */
 function emptyReason(st) {
   if (!st) return 'loaded; the layer holds no features and records no reason';
   const parts = [];
@@ -107,60 +168,307 @@ function emptyReason(st) {
   return parts.length ? parts.join(' · ') : 'loaded; the layer holds no features and records no reason';
 }
 
-function row(l) {
-  const s = state.get(l.id) || { status: 'WAIT' };
-  const why = s.why ? ` · ${esc(s.why)}` : '';
-  const stat = s.doc?.stats ? ` · ${esc(JSON.stringify(s.doc.stats).slice(0, 80))}` : '';
-  return `<div class="lrow"><input type="checkbox" id="L-${esc(l.id)}" ${s.on ? 'checked' : ''}>
-    <label class="lname" for="L-${esc(l.id)}" style="color:${esc(l.colour)}">${esc(l.label)}
-    <span class="ltag ${s.status}">[${s.status}]</span></label></div>
-    <div class="lnote">${esc(l.evidence)}${why}${s.status === 'OK' ? stat : ''}</div>`;
-}
+/* ── rows: built once, then only their tag and note change ────────────────── */
 
-function renderPanel() {
-  if (!manifest) return;
-  const groups = [...new Set(manifest.layers.map(l => l.group))];
-  const warn = droppedIds.length
-    ? `<div class="lnote lwarn">dropped from the URL, not in layers/manifest.json: ${esc(droppedIds.join(', '))}</div>` : '';
-  $('layersList').innerHTML = warn + groups.map(g =>
-    `<div class="lgroup">${esc(g)}</div>` + manifest.layers.filter(l => l.group === g).map(row).join('')
-  ).join('') + `<div class="lnote">substrate ${esc(manifest.substrate)} · frozen · layers built ${esc(manifest.built_utc)}</div>`;
+const rows = new Map();    /* id -> {input, tag, note} */
+
+function buildRows() {
+  const frag = document.createDocumentFragment();
+  let group = null;
   for (const l of manifest.layers) {
-    $('L-' + l.id).addEventListener('change', e => toggle(l, e.target.checked));
+    if (l.group !== group) { group = l.group; frag.appendChild(node('div', group, 'lgroup')); }
+    const r = node('div', null, 'lrow');
+    const input = node('input'); input.type = 'checkbox'; input.id = 'L-' + l.id;
+    const label = node('label', l.label + ' ', 'lname'); label.htmlFor = input.id; label.style.color = l.colour;
+    const tag = node('span', '[WAIT]', 'ltag WAIT');
+    label.appendChild(tag);
+    r.append(input, label);
+    const note = node('div', l.evidence, 'lnote');
+    frag.append(r, note);
+    input.addEventListener('change', () => toggle(l, input.checked));
+    rows.set(l.id, { input, tag, note });
   }
-  renderElements(manifest, state);
+  frag.appendChild(node('div', `substrate ${manifest.substrate} · frozen · layers built ${manifest.built_utc}`, 'lnote'));
+  $('layersList').replaceChildren(frag);
 }
 
-/* ── ELEMENT: what a consumer of a module meets ─────────────────────────────
-   Shown when a layer that carries properties.schema or properties.export_subpath
-   is OK. One card per block symbol, one entry per module that block's functions
-   resolve to: its export subpath (or why there is none), the schema it stamps,
-   what its NOT_COMPUTED refuses, and where it lives. Built from DOM nodes with
-   textContent only; nothing from a dataset is ever parsed as HTML. */
+function paintRow(l) {
+  const s = state.get(l.id), r = rows.get(l.id);
+  if (!r) return;
+  const word = s.status.split(' ')[0];
+  if (r.tag.textContent !== `[${s.status}]`) { r.tag.textContent = `[${s.status}]`; r.tag.className = 'ltag ' + word; }
+  let note = l.evidence ?? '';
+  if (s.why) note += ' · ' + s.why;
+  if (s.status === 'OK' && s.doc?.stats) note += ' · ' + JSON.stringify(s.doc.stats).slice(0, 80);
+  if (!s.on && s.loaded) note += ' · hidden; kept in memory';
+  if (r.note.textContent !== note) r.note.textContent = note;
+  if (r.input.checked !== !!s.on) r.input.checked = !!s.on;
+}
+
+function paintMeter() {
+  if (!manifest) return;
+  $('layersMeter').textContent = `features in memory ${fmt(heldFeatures())} of a ${fmt(FEATURE_CAP)} ceiling · ` +
+    `${queue.active} of ${MAX_FETCH} fetches busy · ${queue.waiting.length} queued · ${fmt(LOADER.evictions)} released at the ceiling`;
+}
+
+/* ── the fetch queue and the shared URL cache ────────────────────────────── */
+
+class FetchQueue {
+  constructor(n) { this.n = n; this.active = 0; this.waiting = []; }
+  async add(task) {
+    if (this.active >= this.n) { await new Promise(res => this.waiting.push(res)); paintMeter(); }
+    this.active++; paintMeter();
+    try { return await task(); }
+    finally { this.active--; if (this.waiting.length) this.waiting.shift()(); paintMeter(); }
+  }
+}
+const queue = new FetchQueue(MAX_FETCH);
+const urlCache = new Map();   /* url -> promise of parsed JSON */
+
+function fetchJSON(url) {
+  if (urlCache.has(url)) return urlCache.get(url);
+  const p = queue.add(async () => {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
+    LOADER.fetches++;
+    try {
+      const r = await fetch(url, { signal: ctl.signal, cache: 'default' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } catch (e) {
+      throw e.name === 'AbortError' ? new Error(`no answer within ${FETCH_TIMEOUT_MS / 1000} s`) : e;
+    } finally { clearTimeout(timer); }
+  });
+  urlCache.set(url, p);
+  p.catch(() => urlCache.delete(url));
+  return p;
+}
+
+/* ── the ceiling, and what is released to stay under it ──────────────────── */
+
+function heldFeatures() {
+  let n = 0;
+  for (const l of manifest.layers) {
+    const s = state.get(l.id);
+    if (s.tiles) {
+      for (const b of s.tiles.bands) if (b.loaded || b.loading) n += b.m.features;
+    } else if (s.loaded && s.doc) n += s.doc.features.length;
+    else if (s.loading) n += Number(l.features) || 0;
+  }
+  return n;
+}
+
+/* Frees memory until `need` more features fit, or says it cannot. Hidden layers
+   go first, least recently used; then bands of tiled layers outside `keep`,
+   farthest from their view first. Nothing in `keep` and nothing visible and
+   whole is ever released. */
+function makeRoom(need, keep) {
+  while (heldFeatures() + need > FEATURE_CAP) {
+    let victim = null, score = -Infinity;
+    for (const l of manifest.layers) {
+      const s = state.get(l.id);
+      if (s.tiles) {
+        for (const b of s.tiles.bands) {
+          if (!b.loaded || b.m.features === 0 || keep?.has(b)) continue;
+          const far = s.on && s.tiles.view ? Math.min(Math.abs(b.m.band - s.tiles.view[0]), Math.abs(b.m.band - s.tiles.view[1])) : 1e6;
+          const sc = (s.on ? 0 : 1e9 - s.used) + far;
+          if (sc > score) { score = sc; victim = () => releaseBand(l, s, b); }
+        }
+      } else if (!s.on && s.loaded && s.doc && s.doc.features.length) {
+        const sc = 2e9 - s.used;
+        if (sc > score) { score = sc; victim = () => releaseWhole(l, s); }
+      }
+    }
+    if (!victim) return false;
+    victim();
+    LOADER.evictions++;
+  }
+  return true;
+}
+
+function releaseWhole(l, s) {
+  urlCache.delete(ROOT + l.file);
+  s.doc = null; s.cache = null; s.loaded = false; s.status = 'WAIT';
+  s.why = 'released from memory at the ceiling; fetched again if ticked';
+  paintRow(l);
+}
+
+function releaseBand(l, s, b) {
+  urlCache.delete(b.url);
+  b.doc = null; b.cache = null; b.loaded = false;
+}
+
+/* ── hydrating a whole layer ─────────────────────────────────────────────── */
+
+async function hydrateWhole(l, s) {
+  if (s.loaded || s.loading) return;
+  const want = Number(l.features) || 0;
+  if (!makeRoom(want)) return refuse(l, s, want);
+  s.loading = true; s.status = 'LOAD'; s.why = ''; paintRow(l); paintMeter();
+  try {
+    const doc = await fetchJSON(ROOT + l.file);
+    s.loading = false;
+    const n = doc.features.length;
+    if (n > want && !makeRoom(n - want)) { urlCache.delete(ROOT + l.file); return refuse(l, s, n); }
+    s.doc = doc; s.loaded = true;
+    s.cache = n ? buildCache(doc) : null;
+    s.status = n ? 'OK' : 'EMPTY';
+    s.why = n ? '' : emptyReason(doc.stats);
+  } catch (e) {
+    s.loading = false; s.status = 'FAIL'; s.why = e.message;
+  }
+  paintRow(l); paintMeter();
+  if (s.status === 'OK') renderElements();
+  drawOverlay();
+}
+
+function refuse(l, s, want) {
+  const held = heldFeatures();
+  s.on = false; s.loading = false; s.status = 'REFUSED';
+  s.why = `not loaded: its ${fmt(want)} features and the ${fmt(held)} already in memory that cannot be released would come to ${fmt(held + want)}, ` +
+    `above the ${fmt(FEATURE_CAP)} ceiling; untick another layer first`;
+  paintRow(l); paintMeter(); writeLayersToURL();
+}
+
+/* ── hydrating a tiled layer: the index, then only bands in view ─────────── */
+
+async function hydrateTiled(l, s) {
+  if (s.loaded || s.loading) return;
+  s.loading = true; s.status = 'LOAD'; s.why = 'reading the band index'; paintRow(l);
+  try {
+    const index = await fetchJSON(tileSet.layers[l.id]);
+    const iid = index.layer?.id ?? index.layer_id;
+    if (iid !== l.id) throw new Error(`the tile index names layer ${iid}, not ${l.id}`);
+    if (!index.scheme?.S || !Array.isArray(index.bands)) throw new Error('the tile index carries no band scheme');
+    s.tiles = { S: index.scheme.S, law: index.scheme.law, view: null, stats: index.stats, bands: index.bands.map(m => ({ m, url: ROOT + m.file, loaded: false, loading: false, doc: null, cache: null })) };
+    s.loaded = true; s.loading = false; s.status = 'OK'; s.why = '';
+  } catch (e) {
+    s.loading = false; s.status = 'FAIL';
+    s.why = `${tileSet.layers[l.id]}: ${e.message}; a layer over ${fmt(TILE_OVER)} features is read only by radius band`;
+  }
+  paintRow(l);
+  updateTiles();
+}
+
+const minZoomOf = (s, v) => Math.max(v.w, v.h) / (TILE_SPAN_BANDS * s.tiles.S);
+
+/* The bands a screen can show: r = sqrt(key), so the rectangle's nearest and
+   farthest distance from the origin bound the band range. */
+function bandsInView(s, v) {
+  const z = v.zoom, hw = v.w / 2 / z, hh = v.h / 2 / z;
+  const ax = Math.abs(v.x), ay = Math.abs(v.y);
+  const r0 = Math.hypot(Math.max(ax - hw, 0), Math.max(ay - hh, 0)), r1 = Math.hypot(ax + hw, ay + hh);
+  const n = s.tiles.bands.length;
+  return [Math.min(n, Math.floor(r0 / s.tiles.S)), Math.min(n - 1, Math.floor(r1 / s.tiles.S))];
+}
+
+function updateTiles() {
+  const v = liveView();
+  if (!v || !v.w || !manifest) return;
+  for (const l of manifest.layers) {
+    const s = state.get(l.id);
+    if (!s.on || !s.tiles) continue;
+    const mz = minZoomOf(s, v);
+    let why;
+    if (v.zoom < mz) {
+      s.tiles.view = null;
+      why = `drawn by radius band from zoom ${mz.toFixed(1)}; now ${v.zoom.toFixed(2)}, zoom in`;
+    } else {
+      const [b0, b1] = bandsInView(s, v);
+      s.tiles.view = [b0, b1];
+      const keep = new Set(s.tiles.bands.slice(b0, b1 + 1));
+      let blocked = 0;
+      for (const b of keep) {
+        if (b.loaded || b.loading) continue;
+        if (b.m.features === 0) { b.loaded = true; continue; }
+        if (!makeRoom(b.m.features, keep)) { blocked++; continue; }
+        loadBand(l, s, b);
+      }
+      const inMem = s.tiles.bands.filter(b => b.loaded && b.m.features).length;
+      why = `bands ${b0}–${b1} in view · ${inMem} of ${s.tiles.bands.length} bands in memory` +
+        (blocked ? ` · ${blocked} band(s) in view not loaded: they would cross the ${fmt(FEATURE_CAP)} ceiling` : '');
+    }
+    if (s.why !== why) { s.why = why; paintRow(l); }
+  }
+  paintMeter();
+}
+
+async function loadBand(l, s, b) {
+  b.loading = true;
+  try {
+    const doc = await fetchJSON(b.url);
+    if (doc.features.length !== b.m.features) throw new Error(`band ${b.m.band} holds ${doc.features.length} features, index says ${b.m.features}`);
+    b.doc = doc; b.cache = buildCache(doc); b.loaded = true;
+  } catch (e) {
+    s.status = 'FAIL'; s.why = `band ${b.m.band}: ${e.message}`; paintRow(l);
+  }
+  b.loading = false;
+  paintMeter();
+  drawOverlay();
+  updateTiles();
+}
+
+/* ── ticking ─────────────────────────────────────────────────────────────── */
+
+function toggle(l, on) {
+  const s = state.get(l.id);
+  s.on = on;
+  if (on) {
+    s.used = ++clock;
+    if (s.status === 'REFUSED') { s.status = 'WAIT'; s.why = ''; }
+    if (tileSet?.layers?.[l.id]) hydrateTiled(l, s); else hydrateWhole(l, s);
+  } else if (picked?.layer.id === l.id) inspect(null);
+  paintRow(l); paintMeter(); writeLayersToURL();
+  if (!on || s.loaded) { renderElements(); drawOverlay(); if (on) updateTiles(); }
+}
+
+/* ── world positions, once per layer or band ─────────────────────────────── */
+
+function buildCache(doc) {
+  const ptKeys = [], ptFeat = [], rtKeys = [], rtStart = [0], rtFeat = [];
+  doc.features.forEach((f, i) => {
+    const g = f.geometry;
+    if (g?.type === 'Point') { ptKeys.push(g.key); ptFeat.push(i); }
+    else if (g?.type === 'LineString' && g.keys?.length) {
+      for (const k of g.keys) rtKeys.push(k);
+      rtStart.push(rtKeys.length); rtFeat.push(i);
+    }
+  });
+  const pts = placeAll(ptKeys), verts = placeAll(rtKeys);
+  const nR = rtFeat.length, box = new Float32Array(nR * 4);
+  for (let r = 0; r < nR; r++) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let j = rtStart[r]; j < rtStart[r + 1]; j++) {
+      const x = verts[j * 2], y = verts[j * 2 + 1];
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+    box[r * 4] = x0; box[r * 4 + 1] = y0; box[r * 4 + 2] = x1; box[r * 4 + 3] = y1;
+  }
+  return { pts, ptFeat: Int32Array.from(ptFeat), verts, rtStart: Uint32Array.from(rtStart), rtFeat: Int32Array.from(rtFeat), box };
+}
+
+/* ── ELEMENT cards: a short section, rebuilt only when a layer turns OK or off ── */
 const ENGINE_LIVE = 'https://ventusltd.github.io/ventus-grid-engine/';
 
-function renderElements(manifest, state) {
+function renderElements() {
   const body = $('layersBody');
   if (!body || !manifest) return;
   $('layersElements')?.remove();
-  const el = (tag, cls, text) => {
-    const n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text != null) n.textContent = String(text);
-    return n;
-  };
   const link = (href, text) => {
-    const a = el('a', 'elink', text);
+    const a = node('a', text, 'elink');
     a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
     return a;
   };
-  const cards = new Map();   /* symbol -> {title, colour, modules: Map(path -> props), functions: Set} */
+  const cards = new Map();
   for (const l of manifest.layers) {
     const s = state.get(l.id);
-    if (!s?.on || s.status !== 'OK') continue;
-    const feats = s.doc.features.filter(f => f.properties && ('schema' in f.properties || 'export_subpath' in f.properties));
-    for (const f of feats) {
+    if (!s?.on || s.status !== 'OK' || !s.doc) continue;
+    for (const f of s.doc.features) {
       const p = f.properties;
+      if (!p || !('schema' in p || 'export_subpath' in p)) continue;
       if (!p.module_path || !p.block) continue;
       if (!cards.has(p.block)) cards.set(p.block, { title: p.title, colour: l.colour, modules: new Map(), functions: new Set() });
       const c = cards.get(p.block);
@@ -169,25 +477,25 @@ function renderElements(manifest, state) {
     }
   }
   if (!cards.size) return;
-  const sec = el('div'); sec.id = 'layersElements';
-  sec.appendChild(el('div', 'lgroup', 'ELEMENT'));
+  const sec = node('div'); sec.id = 'layersElements';
+  sec.appendChild(node('div', 'ELEMENT', 'lgroup'));
   for (const [sym, c] of [...cards].sort((a, b) => a[0].localeCompare(b[0]))) {
-    const card = el('div', 'ecard');
-    const head = el('div', 'ehead');
-    const symEl = el('span', 'esym', sym); symEl.style.color = c.colour;
-    head.append(symEl, el('span', 'ename', ' ' + (c.title || '')));
+    const card = node('div', null, 'ecard');
+    const head = node('div', null, 'ehead');
+    const symEl = node('span', sym, 'esym'); symEl.style.color = c.colour;
+    head.append(symEl, node('span', ' ' + (c.title || ''), 'ename'));
     card.appendChild(head);
-    card.appendChild(el('div', 'efns', [...c.functions].join(', ')));
+    card.appendChild(node('div', [...c.functions].join(', '), 'efns'));
     for (const [path, p] of c.modules) {
-      const m = el('div', 'emod');
-      const kv = (k, v, cls) => { const r = el('div', 'ekv'); r.append(el('span', 'ek', k + ' '), el('span', cls || 'ev', v)); m.appendChild(r); };
+      const m = node('div', null, 'emod');
+      const kv = (k, v, cls) => { const r = node('div', null, 'ekv'); r.append(node('span', k + ' ', 'ek'), node('span', v, cls || 'ev')); m.appendChild(r); };
       kv('module', path);
       kv('export', p.export_subpath ?? ('none — ' + (p.export_reason || 'no subpath')), p.export_subpath ? 'ev' : 'ev enone');
       kv('schema', p.schema ?? ('none — ' + (p.schema_reason || 'no schema')), p.schema ? 'ev eschema' : 'ev enone');
       kv('refuses', (p.refuses && p.refuses.length) ? p.refuses.join(', ')
         : (p.not_computed_form ? `NOT_COMPUTED is a ${p.not_computed_form}, no keys` : 'nothing declared'));
-      const links = el('div', 'elinks');
-      links.append(link(ENGINE_LIVE, 'live engine'), el('span', null, ' · '),
+      const links = node('div', null, 'elinks');
+      links.append(link(ENGINE_LIVE, 'live engine'), node('span', ' · '),
         link(p.github || `https://github.com/Ventusltd/ventus-grid-engine/blob/main/${path}`, 'GitHub ' + path));
       m.appendChild(links);
       card.appendChild(m);
@@ -197,67 +505,8 @@ function renderElements(manifest, state) {
   body.appendChild(sec);
 }
 
-async function toggle(l, on) {
-  const s = state.get(l.id) || { status: 'WAIT' };
-  s.on = on; state.set(l.id, s);
-  writeLayersToURL();
-  if (on && !s.doc && !s.loading) {
-    s.loading = true; s.why = '';
-    s.status = 'LOAD'; renderPanel();
-    try {
-      if (l.tiles) s.doc = await hydrateTiles(l, s);
-      else {
-        const r = await fetch(l.file, { cache: 'default' });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        s.doc = await r.json();
-      }
-      s.status = s.doc.features.length ? 'OK' : 'EMPTY';
-      if (!s.doc.features.length) s.why = emptyReason(s.doc.stats);
-    } catch (e) { s.status = 'FAIL'; s.why = e.message; }
-    s.loading = false;
-  }
-  if (!on && picked?.layer.id === l.id) inspect(null);
-  renderPanel(); drawOverlay();
-}
-
-/* A tiled layer is split by radius band (build/tile_layer.py): because r = sqrt(key),
-   band b is the key range [(b*S)^2, ((b+1)*S)^2). For now every band is fetched up
-   front, but as separate requests, so the panel can count them in (LOAD n/N) and a
-   later version can fetch only the bands in view. The assembled doc is identical in
-   shape to the whole-file layer, so drawing does not know the difference. */
-async function hydrateTiles(l, s) {
-  const r = await fetch(l.tiles, { cache: 'default' });
-  if (!r.ok) throw new Error('tile index HTTP ' + r.status);
-  const index = await r.json();
-  const bands = index.bands || [];
-  const N = bands.length;
-  let n = 0;
-  s.status = `LOAD ${n}/${N}`; renderPanel();
-  const parts = await Promise.all(bands.map(async b => {
-    const t = await fetch(b.file, { cache: 'default' });
-    if (!t.ok) throw new Error(`band ${b.band} HTTP ${t.status}`);
-    const doc = await t.json();
-    if (doc.features.length !== b.features)
-      throw new Error(`band ${b.band} holds ${doc.features.length} features, index says ${b.features}`);
-    n++; s.status = `LOAD ${n}/${N}`; renderPanel();
-    return doc.features;
-  }));
-  const features = parts.flat();
-  if (index.source && features.length !== index.source.features)
-    throw new Error(`tiles hold ${features.length} features, source had ${index.source.features}`);
-  return {
-    type: 'CodeFeatureCollection', substrate: index.substrate, layer: index.layer,
-    provenance: index.provenance, stats: { features: features.length, bands: N }, features,
-  };
-}
-
 /* ── the URL: ?layers=engine,declared ─────────────────────────────────────── */
 
-/* The wafer's URL grammar: only permanent identifiers travel. A layer id is used
-   only if the manifest names it; anything else in the URL is dropped, NAMED in
-   the panel as dropped (policy chosen 15 Sep 2026: a visible warning, never a
-   silent canonicalisation), and the next write puts the URL back into
-   canonical, manifest-ordered form. */
 function writeLayersToURL() {
   if (!manifest) return;
   const on = manifest.layers.filter(l => state.get(l.id)?.on).map(l => l.id);
@@ -270,71 +519,237 @@ function writeLayersToURL() {
 }
 
 function readLayersFromURL() {
-  if (!manifest) return;
   const raw = new URL(location.href).searchParams.get('layers') || '';
   const known = new Map(manifest.layers.map(l => [l.id, l]));
   const asked = [...new Set(raw.split(',').map(x => x.trim()).filter(Boolean))];
-  const wanted = asked.filter(id => known.has(id));
-  droppedIds = asked.filter(id => !known.has(id));
-  if (droppedIds.length) renderPanel();
-  for (const id of wanted) state.get(id).on = true;     /* mark all first, so each write keeps the rest */
-  if (raw) writeLayersToURL();
-  for (const id of wanted) toggle(known.get(id), true);
-}
-
-/* ── drawing: follow the wafer's frame ───────────────────────────────────── */
-
-/* ── the camera: the wafer's own, read live ──────────────────────────────── */
-
-const liveView = () => window.__wafer?.view ?? null;
-
-/* The wafer's formula, exactly: see drawMarks() and nearestKeyAt() in app.mjs. */
-const toScreen = (v, [x, y]) => [(x - v.x) * v.zoom + v.w / 2, v.h / 2 - (y - v.y) * v.zoom];
-
-function* visibleLayers() {
-  for (const l of (manifest?.layers || [])) {
-    const s = state.get(l.id);
-    if (s?.on && s.status === 'OK') yield [l, s.doc];
+  const dropped = asked.filter(id => !known.has(id));
+  if (dropped.length) {
+    $('layersWarn').textContent = `dropped from the URL, not in layers/manifest.json: ${dropped.join(', ')}`;
+    $('layersWarn').hidden = false;
   }
+  for (const id of asked) if (known.has(id)) toggle(known.get(id), true);
+  if (raw) writeLayersToURL();
 }
 
 /* ── drawing ─────────────────────────────────────────────────────────────── */
 
-function drawOverlay() {
-  const v = liveView();
-  if (!v || !v.w || !v.h) return;          /* the wafer has not framed itself yet */
-  const dpr = v.dpr || 1;
-  const W = Math.round(v.w * dpr), H = Math.round(v.h * dpr);
-  if (overlay.width !== W || overlay.height !== H) { overlay.width = W; overlay.height = H; }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, v.w, v.h);
-  const S = p => toScreen(v, p);
+const liveView = () => window.__wafer?.view ?? null;
 
-  for (const [l, doc] of visibleLayers()) {
-    ctx.strokeStyle = l.colour; ctx.fillStyle = l.colour;
+/* Every drawable unit: a whole ticked layer, or a loaded band of a ticked tiled
+   layer that is in view at or above its minimum zoom. */
+function* drawUnits(v) {
+  for (const l of (manifest?.layers || [])) {
+    const s = state.get(l.id);
+    if (!s?.on) continue;
+    if (s.tiles) {
+      if (!v || v.zoom < minZoomOf(s, v)) continue;
+      const [b0, b1] = bandsInView(s, v);
+      for (let b = b0; b <= b1; b++) { const t = s.tiles.bands[b]; if (t?.cache) yield [l, t.cache, t.doc]; }
+    } else if (s.status === 'OK' && s.cache) yield [l, s.cache, s.doc];
+  }
+}
+
+/* MOVING FRAMES WITHOUT RE-STROKING. The overlay canvas is OVERLAY_SPAN times the
+   screen each way, centred on it. A settled frame rasterises every unit into it
+   around the current camera (the anchor). While the wafer reports a gesture, a
+   frame only sets a CSS transform that carries the anchor raster to where the
+   camera now puts it, which costs no drawing at all; only when that raster no
+   longer covers the screen, or is magnified past OVERLAY_MAGNIFY, is it drawn
+   again, thinned to every THIN_STEP-th vertex, around the moving camera.
+   Measured reason: in WebKit at iPhone 13 size, stroking ten module layers took
+   most of each moving frame even thinned (numbers in the commit message). */
+const OVERLAY_SPAN = 1.5;
+const OVERLAY_MAGNIFY = 2;
+let overlayDirty = false, lastTileView = '', anchor = null;
+
+function placeOverlay(v) {
+  const dpr = v.dpr || 1;
+  const cw = Math.round(v.w * OVERLAY_SPAN), ch = Math.round(v.h * OVERLAY_SPAN);
+  const W = Math.round(cw * dpr), H = Math.round(ch * dpr);
+  if (overlay.width !== W || overlay.height !== H) {
+    overlay.width = W; overlay.height = H;
+    overlay.style.width = cw + 'px'; overlay.style.height = ch + 'px';
+    overlay.style.left = Math.round((v.w - cw) / 2) + 'px'; overlay.style.top = Math.round((v.h - ch) / 2) + 'px';
+    overlayDirty = true; anchor = null;
+  }
+  return { cw, ch, dpr };
+}
+
+/* The CSS transform that carries the anchor raster to the camera v, or null when
+   the result would leave part of the screen uncovered or be too magnified. */
+function carry(v, cw, ch) {
+  if (!anchor || anchor.w !== v.w || anchor.h !== v.h || anchor.dark !== !!v.dark) return null;
+  const s = v.zoom / anchor.zoom;
+  if (s > OVERLAY_MAGNIFY) return null;
+  const dx = (anchor.x - v.x) * v.zoom, dy = -(anchor.y - v.y) * v.zoom;   /* where the anchor centre lands, from screen centre */
+  if (Math.abs(dx) + v.w / 2 > s * cw / 2 || Math.abs(dy) + v.h / 2 > s * ch / 2) return null;
+  return `translate(${dx.toFixed(2)}px,${dy.toFixed(2)}px) scale(${s.toFixed(5)})`;
+}
+
+function drawOverlay(snap) {
+  const v = snap && typeof snap.zoom === 'number' ? snap : liveView();
+  if (!v || !v.w || !v.h) return;
+  const { cw, ch, dpr } = placeOverlay(v);
+
+  /* A settled view that differs from the last one asks for the bands it shows. */
+  if (!v.moving) {
+    const key = `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.zoom.toFixed(4)},${v.w},${v.h}`;
+    if (key !== lastTileView) { lastTileView = key; setTimeout(updateTiles, 0); }
+  }
+
+  if (v.moving && snap) {
+    const t = carry(v, cw, ch);
+    if (t) { overlay.style.transform = t; LOADER.carried++; return; }
+  }
+
+  const units = [...drawUnits(v)];
+  overlay.style.transform = '';
+  if (!units.length && !picked && !overlayDirty) { LOADER.keysDrawn = 0; anchor = null; return; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cw, ch);
+  overlayDirty = units.length > 0 || !!picked;
+  anchor = { x: v.x, y: v.y, zoom: v.zoom, w: v.w, h: v.h, dark: !!v.dark };
+  if (v.dark) return drawDark(v, units, cw, ch);
+
+  /* The wafer's own mapping, shifted into the larger canvas:
+     X = (x - v.x) * zoom + cw/2, Y = ch/2 - (y - v.y) * zoom. */
+  const z = v.zoom, ox = cw / 2 - v.x * z, oy = ch / 2 + v.y * z;
+  const step = v.moving ? THIN_STEP : 1;
+  const wx0 = (-2 - ox) / z, wx1 = (cw + 2 - ox) / z, wy0 = (oy - ch - 2) / z, wy1 = (oy + 2) / z;
+  let keys = 0;
+
+  for (const [l, c] of units) {
     ctx.globalAlpha = l.draws === 'lines' ? 0.55 : 0.8;
-    ctx.lineWidth = 1;
-    for (const f of doc.features) {
-      const g = f.geometry;
-      if (g.type === 'Point') {
-        const [x, y] = S(place(g.key));
-        if (x < -2 || y < -2 || x > v.w + 2 || y > v.h + 2) continue;
-        ctx.fillRect(x - 1, y - 1, 2, 2);
-      } else if (g.type === 'LineString') {
-        ctx.beginPath();
-        g.keys.forEach((k, i) => { const [x, y] = S(place(k)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-        ctx.stroke();
+    if (c.ptFeat.length) {
+      ctx.fillStyle = l.colour;
+      ctx.beginPath();
+      const P = c.pts;
+      for (let i = 0; i < c.ptFeat.length; i += step) {
+        const X = P[i * 2] * z + ox, Y = oy - P[i * 2 + 1] * z;
+        if (X < -2 || Y < -2 || X > cw + 2 || Y > ch + 2) continue;
+        ctx.rect(X - 1, Y - 1, 2, 2);
+        keys++;
       }
+      ctx.fill();
+    }
+    if (c.rtFeat.length) {
+      ctx.strokeStyle = l.colour; ctx.lineWidth = 1;
+      ctx.beginPath();
+      const V = c.verts, B = c.box, S = c.rtStart;
+      for (let r = 0; r < c.rtFeat.length; r++) {
+        if (B[r * 4 + 2] < wx0 || B[r * 4] > wx1 || B[r * 4 + 3] < wy0 || B[r * 4 + 1] > wy1) continue;
+        const a = S[r], e = S[r + 1] - 1;
+        ctx.moveTo(V[a * 2] * z + ox, oy - V[a * 2 + 1] * z);
+        keys++;
+        for (let j = a + step; j < e; j += step) { ctx.lineTo(V[j * 2] * z + ox, oy - V[j * 2 + 1] * z); keys++; }
+        if (e > a) { ctx.lineTo(V[e * 2] * z + ox, oy - V[e * 2 + 1] * z); keys++; }
+      }
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
   }
+  LOADER.keysDrawn = keys;
+  LOADER.rasters++;
 
   if (picked) {
     const g = picked.feature.geometry;
     ctx.strokeStyle = picked.layer.colour; ctx.lineWidth = 1.4;
-    for (const k of (g.type === 'Point' ? [g.key] : g.keys)) {
-      const [x, y] = S(place(k));
-      ctx.beginPath(); ctx.arc(x, y, 7, 0, 6.2832); ctx.stroke();
+    const pk = g.type === 'Point' ? [g.key] : g.keys;
+    const P = placeAll(pk);
+    for (let i = 0; i < pk.length; i++) {
+      ctx.beginPath(); ctx.arc(P[i * 2] * z + ox, oy - P[i * 2 + 1] * z, 7, 0, 6.2832); ctx.stroke();
+    }
+  }
+}
+
+/* ── dark ground: waking the charted keys ────────────────────────────────────
+ * Lifted from iterations/21-dark-pixels/layers-panel.mjs, used only while the
+ * wafer reports dark: true (the reader ticked "dark ground"). The ground is
+ * drawn near-black by app.mjs; only keys a ticked layer charts are lit.
+ *
+ * ZOOM MAPPING. atlas zoom = 8 + log2(wafer zoom): the wafer's zoom is screen
+ * pixels per world unit and a map's zoom doubles its scale per step.
+ * RADIUS. Grid Atlas's 11kV stops, 13.5 -> 4 px, 15 -> 8, 18 -> 18, with two
+ * stops added below, 6 -> 2.5 and 10 -> 3, so a lit line stays visible at every
+ * zoom. CASING a black ring 1 px, 2 px from 15. OPACITY 0.7 at 6 to 0.9 at 13.5.
+ * GLOW the layer colour at 0.15 and 2.4 times the radius from 13.5. ROUTES a
+ * black casing 2.5 px wider than the line, then the line, 1 px at 6 to 2.5 px
+ * at 18. Here it draws from the fast-zoom caches (world positions placed once),
+ * and moving frames keep every THIN_STEP-th point, as the light drawing does.
+ */
+const atlasZoom = z => 8 + Math.log2(z);
+function interp(stops, x) {
+  if (x <= stops[0][0]) return stops[0][1];
+  for (let i = 1; i < stops.length; i++) {
+    const [x1, y1] = stops[i];
+    if (x <= x1) { const [x0, y0] = stops[i - 1]; return y0 + (y1 - y0) * (x - x0) / (x1 - x0); }
+  }
+  return stops[stops.length - 1][1];
+}
+const RADIUS = [[6, 2.5], [10, 3], [13.5, 4], [15, 8], [18, 18]];
+const CASING = [[13.5, 1], [15, 2]];
+const OPACITY = [[6, 0.7], [13.5, 0.9]];
+const LINE_W = [[6, 1], [18, 2.5]];
+
+function drawDark(v, units, cw, ch) {
+  const z = v.zoom, ox = cw / 2 - v.x * z, oy = ch / 2 + v.y * z;
+  const az = atlasZoom(z);
+  const rad = interp(RADIUS, az), cas = interp(CASING, az), op = interp(OPACITY, az), lw = interp(LINE_W, az);
+  const pad = rad * 2.4 + 2;
+  const step = v.moving ? THIN_STEP : 1;
+  const wx0 = (-pad - ox) / z, wx1 = (cw + pad - ox) / z, wy0 = (oy - ch - pad) / z, wy1 = (oy + pad) / z;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  let keys = 0;
+  /* routes first, under the points: casing pass then colour pass */
+  for (const [l, c] of units) {
+    if (!c.rtFeat.length) continue;
+    const V = c.verts, B = c.box, S = c.rtStart;
+    ctx.beginPath();
+    for (let r = 0; r < c.rtFeat.length; r++) {
+      if (B[r * 4 + 2] < wx0 || B[r * 4] > wx1 || B[r * 4 + 3] < wy0 || B[r * 4 + 1] > wy1) continue;
+      const a = S[r], e = S[r + 1] - 1;
+      ctx.moveTo(V[a * 2] * z + ox, oy - V[a * 2 + 1] * z);
+      for (let j = a + step; j < e; j += step) ctx.lineTo(V[j * 2] * z + ox, oy - V[j * 2 + 1] * z);
+      if (e > a) ctx.lineTo(V[e * 2] * z + ox, oy - V[e * 2 + 1] * z);
+    }
+    ctx.globalAlpha = 0.85; ctx.strokeStyle = '#000'; ctx.lineWidth = lw + 2.5; ctx.stroke();
+    ctx.globalAlpha = op; ctx.strokeStyle = l.colour; ctx.lineWidth = lw; ctx.stroke();
+  }
+  /* points and route stops: glow, casing, fill; one path each per unit, culled */
+  const glow = az >= 13.5;
+  for (const [l, c] of units) {
+    const glowPath = glow ? new Path2D() : null, casePath = new Path2D(), fillPath = new Path2D();
+    let shown = 0;
+    const lit = (X, Y) => {
+      if (X < -pad || Y < -pad || X > cw + pad || Y > ch + pad) return;
+      shown++;
+      if (glow) { glowPath.moveTo(X + rad * 2.4, Y); glowPath.arc(X, Y, rad * 2.4, 0, 6.2832); }
+      casePath.moveTo(X + rad + cas, Y); casePath.arc(X, Y, rad + cas, 0, 6.2832);
+      fillPath.moveTo(X + rad, Y); fillPath.arc(X, Y, rad, 0, 6.2832);
+    };
+    const P = c.pts;
+    for (let i = 0; i < c.ptFeat.length; i += step) lit(P[i * 2] * z + ox, oy - P[i * 2 + 1] * z);
+    const V = c.verts, B = c.box, S = c.rtStart;
+    for (let r = 0; r < c.rtFeat.length; r++) {
+      if (B[r * 4 + 2] < wx0 || B[r * 4] > wx1 || B[r * 4 + 3] < wy0 || B[r * 4 + 1] > wy1) continue;
+      for (let j = S[r]; j < S[r + 1]; j += step) lit(V[j * 2] * z + ox, oy - V[j * 2 + 1] * z);
+    }
+    keys += shown;
+    if (!shown) continue;
+    if (glow) { ctx.globalAlpha = 0.15; ctx.fillStyle = l.colour; ctx.fill(glowPath); }
+    ctx.globalAlpha = 1; ctx.fillStyle = '#000'; ctx.fill(casePath);
+    ctx.globalAlpha = op; ctx.fillStyle = l.colour; ctx.fill(fillPath);
+  }
+  ctx.globalAlpha = 1;
+  LOADER.keysDrawn = keys;
+  LOADER.rasters++;
+  if (picked) {
+    const g = picked.feature.geometry;
+    ctx.strokeStyle = picked.layer.colour; ctx.lineWidth = 1.4;
+    const pk = g.type === 'Point' ? [g.key] : g.keys;
+    const P = placeAll(pk);
+    for (let i = 0; i < pk.length; i++) {
+      ctx.beginPath(); ctx.arc(P[i * 2] * z + ox, oy - P[i * 2 + 1] * z, rad + cas + 5, 0, 6.2832); ctx.stroke();
     }
   }
 }
@@ -343,47 +758,40 @@ window.__wafer?.onDraw.add(drawOverlay);
 
 /* ── tap to inspect ──────────────────────────────────────────────────────── */
 
-function segDist2(px, py, [ax, ay], [bx, by]) {
+function segDist2(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
   const t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0;
   const qx = ax + t * dx - px, qy = ay + t * dy - py;
   return qx * qx + qy * qy;
 }
 
-/* The nearest drawn feature to a screen point, or null when none is within reach. */
 function pickAt(cx, cy) {
   const v = liveView();
   if (!v || !v.zoom) return null;
+  const z = v.zoom, ox = v.w / 2 - v.x * z, oy = v.h / 2 + v.y * z;
   let best = null, bestD = PICK_REACH * PICK_REACH;
-  for (const [l, doc] of visibleLayers()) {
-    for (const f of doc.features) {
-      const g = f.geometry;
-      let d = Infinity;
-      if (g.type === 'Point') {
-        const [x, y] = toScreen(v, place(g.key));
-        d = (x - cx) ** 2 + (y - cy) ** 2;
-      } else if (g.type === 'LineString' && g.keys.length) {
-        const pts = g.keys.map(k => toScreen(v, place(k)));
-        d = segDist2(cx, cy, pts[0], pts[0]);
-        for (let i = 1; i < pts.length; i++) d = Math.min(d, segDist2(cx, cy, pts[i - 1], pts[i]));
+  for (const [l, c, doc] of drawUnits(v)) {
+    for (let i = 0; i < c.ptFeat.length; i++) {
+      const X = c.pts[i * 2] * z + ox, Y = oy - c.pts[i * 2 + 1] * z;
+      const d = (X - cx) ** 2 + (Y - cy) ** 2;
+      if (d < bestD) { bestD = d; best = { layer: l, feature: doc.features[c.ptFeat[i]] }; }
+    }
+    const V = c.verts, S = c.rtStart;
+    for (let r = 0; r < c.rtFeat.length; r++) {
+      const a = S[r], e = S[r + 1];
+      let px = V[a * 2] * z + ox, py = oy - V[a * 2 + 1] * z;
+      let d = (px - cx) ** 2 + (py - cy) ** 2;
+      for (let j = a + 1; j < e; j++) {
+        const qx = V[j * 2] * z + ox, qy = oy - V[j * 2 + 1] * z;
+        d = Math.min(d, segDist2(cx, cy, px, py, qx, qy));
+        px = qx; py = qy;
       }
-      if (d < bestD) { bestD = d; best = { layer: l, feature: f }; }
+      if (d < bestD) { bestD = d; best = { layer: l, feature: doc.features[c.rtFeat[r]] }; }
     }
   }
   return best;
 }
 
-const node = (tag, text, cls) => {
-  const n = document.createElement(tag);
-  if (text != null) n.textContent = String(text);
-  if (cls) n.className = cls;
-  return n;
-};
-
-/* Dataset text only ever reaches the page through textContent. */
-/* A property that carries its own "meaning" is shown as its value, then the
-   meaning on a dim line beneath, so a reader on a phone sees what the value is
-   and what it is not, without reading raw JSON. Anything else keeps its text. */
 function valueNode(val) {
   const dd = node('dd');
   if (val !== null && typeof val === 'object' && !Array.isArray(val) && typeof val.meaning === 'string') {
@@ -409,9 +817,7 @@ function inspect(hit) {
   const g = f.geometry;
   const where = node('div', g.type === 'Point' ? `line ${g.key}` : `lines ${g.keys.join(' → ')}`, 'lnote');
   const dl = node('dl');
-  for (const [k, val] of Object.entries(f.properties || {})) {
-    dl.append(node('dt', k), valueNode(val));
-  }
+  for (const [k, val] of Object.entries(f.properties || {})) dl.append(node('dt', k), valueNode(val));
   const ev = node('div', 'evidence: ' + (l.evidence ?? 'none recorded'), 'lnote');
   box.append(close, h, where, dl, ev);
   box.hidden = false;
@@ -419,44 +825,90 @@ function inspect(hit) {
   drawOverlay();
 }
 
-/* Non-capturing, and never prevents or stops the event: the wafer's own tap
-   (which opens its line panel) still happens exactly as before. */
-{
-  const pts = new Map();
-  let moved = 0;
-  const onStage = e => e.target instanceof Element && e.target.id === 'stage';
-  document.addEventListener('pointerdown', e => {
-    if (!onStage(e)) return;
-    pts.set(e.pointerId, [e.clientX, e.clientY]);
-    if (pts.size === 1) moved = 0;
-  });
-  document.addEventListener('pointermove', e => {
-    const prev = pts.get(e.pointerId);
-    if (!prev) return;
-    moved += Math.abs(e.clientX - prev[0]) + Math.abs(e.clientY - prev[1]);
-    pts.set(e.pointerId, [e.clientX, e.clientY]);
-  });
-  const end = e => {
-    if (!pts.has(e.pointerId)) return;
-    const single = pts.size === 1;
-    pts.delete(e.pointerId);
-    if (e.type !== 'pointerup' || !single || moved >= TAP_SLOP) return;
-    const hit = pickAt(e.clientX, e.clientY);
-    if (hit) inspect(hit);
-  };
-  document.addEventListener('pointerup', end);
-  document.addEventListener('pointercancel', end);
+/* The tap belongs to the code card in app.mjs (iterations/31-code-card-everywhere/
+   layers-panel.mjs). What lies under a finger is answered here and nothing else.
+   The root's old listener opened #layersBody under the finger, and that same
+   tap's click could then tick a checkbox (iterations/21-dark-pixels notes). */
+let tileSchemePromise = null;
+function tileScheme() {
+  const id = tileSet ? Object.keys(tileSet.layers)[0] : null;
+  if (!id) return Promise.resolve(null);
+  tileSchemePromise ||= fetchJSON(tileSet.layers[id])
+    .then(ix => ix.scheme?.S ? { S: ix.scheme.S, law: ix.scheme.law, layer: id, path: tileSet.layers[id].replace(/^\.\//, '') } : null)
+    .catch(e => { tileSchemePromise = null; throw e; });
+  return tileSchemePromise;
 }
+window.__layers = Object.freeze({ pickAt, inspect, tileScheme });
+
+/* ── Questions and machine detail ────────────────────────────────────────────
+   After iterations/22-fast-zoom/questions.mjs, answered for this root page.
+   Counts are read at run time from the manifest and the live wafer; function
+   names and files are cited from this directory's own source. */
+function questions(big) {
+  const dl = $('qlist'), machine = $('machine');
+  if (!dl || !machine) return;
+  const answer = (q, a) => { dl.append(node('dt', q), node('dd', a)); };
+  const sld = manifest.layers.filter(l => /sld/i.test(l.id));
+  dl.replaceChildren();
+  answer('1 · How does this help draw a system or a single-line diagram?',
+    'The page itself draws no busbar, feeder, transformer, cable route, protection or earthing: it is the surface such code is found on. ' +
+    (sld.length
+      ? `Of ${fmt(manifest.layers.length)} layers in layers/manifest.json, ${sld.length} carry "sld" in their id (name-match inference): ` +
+        sld.map(l => `${l.id} (${fmt(l.features)} features)`).join(', ') + '. '
+      : `None of the ${fmt(manifest.layers.length)} layers in layers/manifest.json carries "sld" in its id. `) +
+    'Tap a line of an engine module and its code card names the element that module feeds (for example engine/voltage-drop.js, voltageDropVolts: cable route), ' +
+    'from the card\'s module-to-element table checked against the fetched source at its commit; other code reads "none yet".');
+  answer('2 · What is this code used for?',
+    'Reading the estate\'s numbered code at speed. app.mjs: render(), blitCache(), rasterCache(), visibleRange() (moving-frame cache and radius-band culling, from iterations/22-fast-zoom); ' +
+    'cardTap(), openLine(), openRoute(), openArea(), runPanel() (code cards and the local digit edit, from iterations/31-code-card-everywhere); setGround() (dark ground, from iterations/21-dark-pixels). ' +
+    'layers-panel.mjs: fetchJSON(), makeRoom(), updateTiles(), buildCache(), drawOverlay(), drawDark(), pickAt(). ' +
+    'Called by: the browser opening this root page; no page under iterations/ imports ../../app.mjs or ../../layers-panel.mjs (searched in the source).');
+  answer('3 · Where does it lead next?',
+    'From a line: its code card\'s "leads to" row, the family\'s recorded uses and the register\'s depends_on for its block (name-match inference by the modular star build). ' +
+    'From the page as a whole: not established, because it carries no electrical element of its own to connect onward.');
+  const paint = () => {
+    const w = window.__wafer?.stats;
+    const L = window.__waferLayers?.stats;
+    machine.textContent = 'Machine detail · inputs: wheel deltaY and pointer positions (CSS px); layer files of permanent line keys (dimensionless); the ground toggle (lit or dark) · ' +
+      `outputs: ${w ? `${fmt(w.drawn)} of ${fmt(w.total)} points in the last wafer draw, ${fmt(w.rasters)} cache rasters` : 'waiting for the wafer'}; ` +
+      (L ? `${fmt(L.held)} of ${fmt(L.cap)} features in memory, ${fmt(L.bandsInMemory)} bands, ${fmt(L.keysDrawn)} keys in the last overlay frame, ${fmt(L.evictions)} released · ` : '') +
+      `ground: ${window.__wafer?.dark ? 'dark, only charted keys lit' : 'lit (default)'} · ` +
+      `refusals: REFUSED above ${fmt(FEATURE_CAP)} features in memory, FAIL with its HTTP status or a ${FETCH_TIMEOUT_MS / 1000} s timeout, EMPTY with the layer's reason; ` +
+      `layers over ${fmt(TILE_OVER)} features (${big.length ? big.map(l => l.id).join(', ') : 'none today'}) by radius band only · ` +
+      `moving frames keep every ${THIN_STEP}th layer vertex; at most ${MAX_FETCH} layer fetches at once · source: this directory's app.mjs and layers-panel.mjs`;
+  };
+  paint();
+  setInterval(() => { if ($('questions')?.open) paint(); }, 500);
+}
+
+/* Read-only numbers for the Questions panel and for tests. */
+window.__waferLayers = Object.freeze({
+  get stats() {
+    let bands = 0;
+    if (manifest) for (const s of state.values()) if (s.tiles) bands += s.tiles.bands.filter(b => b.loaded && b.m.features).length;
+    return Object.freeze({ held: manifest ? heldFeatures() : 0, cap: FEATURE_CAP, bandsInMemory: bands, evictions: LOADER.evictions,
+      keysDrawn: LOADER.keysDrawn, fetches: LOADER.fetches, overlayRasters: LOADER.rasters, overlayCarried: LOADER.carried, active: queue.active, queued: queue.waiting.length });
+  }
+});
 
 (async () => {
   try {
-    const r = await fetch('layers/manifest.json', { cache: 'no-cache' });
-    if (!r.ok) throw new Error('layers/manifest.json returned HTTP ' + r.status);
-    manifest = await r.json();
-    for (const l of manifest.layers) state.set(l.id, { status: 'WAIT', on: false });
-    renderPanel();
+    const m = await fetchJSON(ROOT + 'layers/manifest.json');
+    urlCache.delete(ROOT + 'layers/manifest.json');
+    manifest = m;
+    const big = manifest.layers.filter(l => (Number(l.features) || 0) > TILE_OVER);
+    tileSet = { tile_over: TILE_OVER, layers: Object.fromEntries(big.map(l => [l.id, tileIndexPath(l.id)])) };
+    for (const l of manifest.layers) state.set(l.id, freshState());
+    buildRows();
+    $('layersRule').textContent =
+      `tiles: a layer over ${fmt(TILE_OVER)} features (today ${big.length ? big.map(l => l.id).join(', ') : 'none'}) loads by radius band from layers/tiles/<id>/index.json ` +
+      `(band = isqrt(key) ÷ S, S read from that index), only bands on screen, from the zoom where the screen spans ${TILE_SPAN_BANDS} bands; ` +
+      `at the ceiling hidden layers, then bands off screen, are released`;
+    questions(big);
+    paintMeter();
+    for (const l of manifest.layers) if (l.preload) toggle(l, true);
     readLayersFromURL();
   } catch (e) {
-    $('layersList').innerHTML = `<div class="lnote">Layers unavailable: ${esc(e.message)}. The wafer itself is unaffected.</div>`;
+    $('layersList').replaceChildren(node('div', `Layers unavailable: ${e.message}. The wafer itself is unaffected.`, 'lnote'));
   }
 })();

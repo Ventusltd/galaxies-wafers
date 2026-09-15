@@ -82,3 +82,81 @@ body{
   #panel{left:1rem; right:auto; width:26rem; bottom:calc(var(--bot) + 2.5rem); max-height:66vh}
   #foot{font-size:11px}
 }
+
+/* ── root promotion (iteration 38) ─────────────────────────────────────────── */
+
+/* The ground toggle and the Questions panel share one small row under the count.
+   Both are collapsed or off by default, so the wafer looks as it did. The row
+   stops short of the LAYERS button on the right. */
+#tools{flex-basis:100%; display:flex; gap:.6rem; align-items:flex-start; flex-wrap:wrap; max-width:calc(100% - 5.5rem); pointer-events:auto; font-size:10.5px}
+#groundToggle{color:var(--dim); cursor:pointer; white-space:nowrap; user-select:none}
+#groundToggle input{vertical-align:-2px; margin:0 .25rem 0 0}
+body.dark-ground #groundToggle{color:var(--ink)}
+
+/* iterations/22-fast-zoom/style.css: the Questions panel, collapsed */
+#questions{max-width:26rem}
+#questions summary{cursor:pointer; color:var(--beam); letter-spacing:.08em; width:max-content}
+#questions[open]{background:#0e121bf2; border:1px solid var(--edge); border-radius:8px; padding:.4rem .55rem; max-height:45vh; overflow:auto}
+#questions dl{margin:.35rem 0 0}
+#questions dt{color:var(--ink); margin-top:.35rem}
+#questions dd{margin:.1rem 0 0; color:var(--dim)}
+#machine,#budget,#thin{margin:.45rem 0 0}
+
+/* iterations/31-code-card-everywhere/style.css: the code card, Grid Atlas popup grammar (iteration 07), as one sheet */
+#card{position:fixed; z-index:6; left:.5rem; right:.5rem; bottom:calc(var(--bot) + .5rem);
+  max-height:64vh; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+  background:#000; color:#d8dee9; border:1px solid #444; border-radius:4px;
+  font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; padding:8px 10px 12px; box-shadow:0 1px 8px #000c}
+#card[hidden]{display:none!important}
+#card .cc-x{position:sticky; float:right; top:0; background:#000; border:0; color:#888; font:inherit; font-size:18px; cursor:pointer; padding:0 6px; line-height:1.2}
+#card .cc-title{display:inline; color:#ffd54a; font-size:13px; font-weight:bold}
+#card .cc-grey{color:#888}
+#card .cc-amber{color:#ffae00}
+#card .cc-small{color:#666; font-size:10.5px; margin:.2rem 0}
+#card .cc-sub{color:#00ffff; font-size:10.5px; letter-spacing:.08em; font-weight:bold}
+#card .cc-tagline{margin:.35rem 0 .25rem}
+#card .cc-tag{display:inline-block; font:600 10px/1 ui-monospace,monospace; padding:.2rem .35rem; border:1px solid currentColor; border-radius:3px; margin-right:.4rem; letter-spacing:.06em}
+#card .cc-tag[data-s="WAIT"]{color:#9aa3b5} #card .cc-tag[data-s="LOAD"]{color:#ffd54a}
+#card .cc-tag[data-s="OK"]{color:#00ffff} #card .cc-tag[data-s="EMPTY"]{color:#b39ddb} #card .cc-tag[data-s="FAIL"]{color:#ff9f43}
+#card .cc-row{margin:.25rem 0; overflow-wrap:anywhere}
+#card .cc-select{max-width:100%; background:#0a0a0a; color:#00ffff; border:1px solid #444; border-radius:3px; font:inherit; font-size:16px; padding:.15rem .25rem}
+#card .cc-dl{display:grid; grid-template-columns:auto 1fr; gap:.15rem .6rem; margin:.4rem 0}
+#card .cc-dl dt{color:#888}
+#card .cc-dl dd{margin:0; overflow-wrap:anywhere}
+#card .cc-link{color:#00ffff}
+#card .cc-codehead{color:#888; font-size:11px; overflow-wrap:anywhere; margin:.4rem 0 .2rem}
+#card .cc-check{color:#aaa; font-size:11px; margin:.1rem 0 .3rem}
+#card .cc-code{position:relative; max-height:34vh; overflow:auto; margin:0; padding:6px 8px; background:#0a0a0a; border:1px solid #333;
+  font:11px/16px ui-monospace,Consolas,monospace; white-space:pre; tab-size:4; color:#d8dee9; cursor:pointer}
+#card .cc-hi{position:absolute; left:0; right:0; min-width:100%; pointer-events:none}
+#card .cc-hi-target{background:#ffd54a26; border-left:3px solid #ffd54a}
+#card .cc-hi-sel{background:#00ffff14; outline:1px solid #00ffff55}
+#card .cc-strip{border:1px solid #333; border-top:0; padding:6px 8px; background:#050505}
+#card .cc-stripline{font:12px/2 ui-monospace,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; color:#d8dee9}
+#card .cc-digit{font:inherit; font-size:16px; width:auto; min-width:1.4em; padding:0 .15rem; margin:0 1px; background:#111; color:#ffae00; border:1px solid #444; border-radius:3px; text-align:center}
+#card .cc-digit.cc-changed{border-color:#00ffff; color:#00ffff}
+#card .cc-digit.cc-blank{border-style:dashed}
+#card .cc-nav{display:flex; gap:.35rem; flex-wrap:wrap; margin:.3rem 0}
+#card .cc-mini, #card .cc-key{background:#0a0a0a; color:#00ffff; border:1px solid #444; border-radius:3px; font:inherit; font-size:11px; padding:.3rem .5rem; cursor:pointer}
+#card .cc-key{padding:.1rem .4rem; font-size:12px}
+#card .cc-pick{width:5em; font:inherit; font-size:16px; background:#111; color:#ffae00; border:1px solid #444; border-radius:3px; margin-right:.35rem}
+#card .cc-local{color:#ffae00; font-size:11px}
+#card .cc-run{margin-top:.6rem; border-top:1px solid #333; padding-top:.45rem}
+#card .popup-btn{display:block; width:100%; margin:.4rem 0; padding:.45rem 0; font:inherit; font-size:11px; font-weight:bold; border:1px solid #00ffff; border-radius:3px; background:#0a0a0a; color:#00ffff; cursor:pointer; letter-spacing:.06em}
+#card .popup-btn:disabled{opacity:.5}
+#card .cc-results .cc-cols{display:grid; grid-template-columns:1fr; gap:.4rem; margin-top:.35rem}
+#card .cc-col{border:1px solid #333; border-radius:3px; padding:.35rem .45rem; min-width:0}
+#card .cc-value{color:#ffd54a; font-size:14px; overflow-wrap:anywhere}
+#card .cc-json{max-height:22vh; overflow:auto; margin:.25rem 0 0; font-size:10.5px; color:#aaa; white-space:pre-wrap; overflow-wrap:anywhere}
+#card .cc-refuse{color:#ffae00; overflow-wrap:anywhere}
+#card .cc-disclaimer{color:#888; font-size:10.5px; margin-top:.4rem; border-left:2px solid #444; padding-left:.4rem}
+#card .cc-stops{margin-top:.4rem}
+#card .cc-stoplist{color:#aaa; font-size:11px; max-height:8em; overflow:auto; overflow-wrap:anywhere}
+#card .cc-q{margin-top:.6rem; border-top:1px solid #333; padding-top:.35rem}
+#card .cc-q summary{color:#00ffff; cursor:pointer; letter-spacing:.06em}
+#card .cc-machine{font-size:11px; color:#aaa; overflow-wrap:anywhere; margin-top:.25rem}
+@media (min-width:760px){
+  #card{left:auto; right:1rem; width:34rem; top:calc(var(--top) + 5rem); bottom:calc(var(--bot) + 2.5rem); max-height:none}
+  #card .cc-results .cc-cols{grid-template-columns:1fr 1fr}
+}
+#card .cc-run .cc-grey, #card .cc-run .cc-local{overflow-wrap:anywhere}
