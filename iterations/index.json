@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 40,
+ "count": 41,
  "iterations": [
   {
    "n": 1,
@@ -403,6 +403,15 @@
    "commit": "38640c3b54a5115163baa357effd12000d6399d2",
    "committed": "2026-09-15T21:47:18+01:00",
    "subject": "iterations 46 chemistry-ledger: elements grid, noble/radioactive by CHEMISTRY.md rules, decay card, graph canvas"
+  },
+  {
+   "n": 47,
+   "dir": "47-federation-honesty",
+   "slug": "federation-honesty",
+   "title": "Is Green Earned?",
+   "commit": "d6b723b3d0fed7b561629a89149e47a9baf6a903",
+   "committed": "2026-09-15T21:51:56+01:00",
+   "subject": "iteration 47: Is Green Earned? federation status honesty"
   }
  ]
 }
