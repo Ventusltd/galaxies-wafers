@@ -47,7 +47,7 @@ function csr(groupOf, groups) {
 function intern(values) {
   const table = [], id = new Map(), out = new Int32Array(values.length);
   values.forEach((v, i) => {
-    const key = v === null || v === undefined ? '0000null' : String(v);
+    const key = v === null || v === undefined ? '\u0000null' : String(v);
     let x = id.get(key);
     if (x === undefined) { x = table.length; id.set(key, x); table.push(v ?? null); }
     out[i] = x;
