@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 39,
+ "count": 40,
  "iterations": [
   {
    "n": 1,
@@ -394,6 +394,15 @@
    "commit": "af6b99186e40322571f8f784bfd4b9caeef3acd7",
    "committed": "2026-09-15T21:42:14+01:00",
    "subject": "iteration 45: The MAP Button, Round Trip"
+  },
+  {
+   "n": 46,
+   "dir": "46-chemistry-ledger",
+   "slug": "chemistry-ledger",
+   "title": "Chemistry Ledger",
+   "commit": "38640c3b54a5115163baa357effd12000d6399d2",
+   "committed": "2026-09-15T21:47:18+01:00",
+   "subject": "iterations 46 chemistry-ledger: elements grid, noble/radioactive by CHEMISTRY.md rules, decay card, graph canvas"
   }
  ]
 }
