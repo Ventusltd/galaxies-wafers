@@ -68,7 +68,10 @@ const view = { x: 0, y: 0, zoom: 1, w: 0, h: 0, dpr: 1, focus: -1, link: null };
 /* Listeners get a frozen scalar snapshot, never the live object: a listener that
    mutates what it received cannot move the wafer's camera. (Codex review.) */
 const snapshot = () => Object.freeze({ x: view.x, y: view.y, zoom: view.zoom, w: view.w, h: view.h, dpr: view.dpr });
-window.__wafer = Object.freeze({ get view() { return snapshot(); }, onDraw: new Set() });
+/* families: the family index once tier 2 has landed ({families, famLines}), else null;
+   'wafer:families' is dispatched on window when it lands or fails. */
+window.__wafer = Object.freeze({ get view() { return snapshot(); }, onDraw: new Set(),
+  get families() { return U.families && U.famLines ? Object.freeze({ families: U.families, famLines: U.famLines }) : null; } });
 
 /* ── the surface ─────────────────────────────────────────────────────────── */
 
@@ -110,6 +113,7 @@ async function tier2() {
   const owner = ownersOf(families, famLines);
   U.ownerOf = owner;
   U.fanout = fanoutCount(owner);
+  window.dispatchEvent(new CustomEvent('wafer:families', { detail: {} }));
   if (view.focus >= 0) paintPanel(view.focus);
   if (view.link) connect(view.link[0], view.link[1]);
 }
@@ -222,7 +226,8 @@ function ensureOverlay() {
 
 function drawMarks() {
   const o = ensureOverlay();
-  o.width = stage.width; o.height = stage.height;
+  /* Sized only when the stage changed: assigning width reallocates the canvas. */
+  if (o.width !== stage.width || o.height !== stage.height) { o.width = stage.width; o.height = stage.height; }
   const c = o.getContext('2d');
   c.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
   c.clearRect(0, 0, view.w, view.h);
@@ -556,5 +561,8 @@ function writeURL(a, b) {
   $('close').addEventListener('click', () => { $('panel').hidden = true; view.focus = -1; view.link = null; draw(); });
 
   readURL();
-  tier2().catch(e => { $('prov').textContent = 'family index unavailable: ' + e.message; });
+  tier2().catch(e => {
+    $('prov').textContent = 'family index unavailable: ' + e.message;
+    window.dispatchEvent(new CustomEvent('wafer:families', { detail: { error: 'family index unavailable: ' + e.message } }));
+  });
 })();
