@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>One System, Stop by Stop</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="journey.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>ONE SYSTEM, STOP BY STOP</h1>
+    <p class="dim small">Five published engine calculations, walked in the order a single-line diagram is drawn: a load, the nearest mapped node, the cable route between them, the physics along that feeder, and the rating labels at a busbar. Each stop adds its element to the diagram. Where one calculation's output becomes the next one's input, the wire is drawn with its unit and meaning, and refused when they do not match.</p>
+    <details id="srcs" class="srcs">
+      <summary>engine sources&nbsp;·&nbsp;<span id="srcsum">WAIT</span></summary>
+      <ul id="mods" class="mods"></ul>
+      <p class="dim small">Fetched only when a stop that needs them is opened (and every earlier stop, because the chain reads their outputs). At most three requests at once; each has a 15 s timeout; a failed row can be tapped to retry.</p>
+    </details>
+  </header>
+
+  <div class="sldwrap" id="sldwrap">
+    <svg id="sld" viewBox="0 0 360 262" role="img" aria-label="Single-line diagram that grows stop by stop"></svg>
+    <div id="dots" class="dots" role="tablist" aria-label="Stops"></div>
+  </div>
+
+  <section id="card" class="card" aria-live="polite"></section>
+
+  <footer class="dim small">
+    <p class="final">each stop is a separate published calculation; the chain is an illustration, not a connection study</p>
+    <p>Modules and proof fixtures are read from ventus-grid-engine at commit <span id="pin"></span>, imported at run time, never copied. Nothing here reads real grid data. <a href="../">every version</a></p>
+  </footer>
+</main>
+<nav class="nav" aria-label="Stop navigation">
+  <button id="prev" type="button">‹ previous</button>
+  <span id="where" class="dim"></span>
+  <button id="next" type="button">next ›</button>
+</nav>
+<script type="module" src="journey.mjs"></script>
+</body>
+</html>
