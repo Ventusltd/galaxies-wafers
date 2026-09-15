@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Seven Meanings — a kilowatt is not a kilowatt</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="seven.css">
+</head>
+<body>
+<main id="page">
+<div class="colA">
+  <header>
+    <h1>SEVEN MEANINGS</h1>
+    <p class="dim">Seven lanes, one for each meaning a quantity can carry in the electrification model. Several share a unit and none is the same quantity. Drag a bar onto another lane to try to add them; the module answers.</p>
+    <p id="status" class="dim" aria-live="polite">WAIT — loading the electrification model from the engine…</p>
+  </header>
+
+  <section id="lanesWrap" aria-label="The seven meanings">
+    <div id="lanes"></div>
+    <div id="axes" class="dim"></div>
+  </section>
+
+  <section id="boundary" class="read">
+    <p class="boundary">Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.</p>
+    <p class="forecast"><b>Scenario, not a forecast.</b> <span id="notForecast" class="dim"></span></p>
+  </section>
+
+  <section id="detail" class="read" aria-live="polite">
+    <p class="dim">Tap a bar to read what the module says about it.</p>
+  </section>
+
+</div>
+<div class="colB">
+  <section id="inputs" aria-label="Scenario inputs">
+    <h2>SCENARIO INPUTS</h2>
+    <div id="sliders"></div>
+    <button id="loadExample" type="button">load the worked example inputs</button>
+  </section>
+
+  <section id="example" class="read">
+    <h2>THE WORKED EXAMPLE, COMPUTED BY THE MODULE</h2>
+    <div id="exampleOut" class="dim">WAIT</div>
+  </section>
+
+  <section id="refusedList" class="read" hidden>
+    <h2>WHAT THE MODULE REFUSED WITH THESE INPUTS</h2>
+    <ul id="refusals"></ul>
+  </section>
+
+</div>
+  <footer class="dim">
+    <p>Every number on this page is computed at run time by <code>engine/electrification-model.js</code> from ventus-grid-engine, pinned at commit <span id="pin"></span>. The page only formats the results (kW ÷ 1,000,000 → GW and MWh ÷ 1,000,000 → TWh for display) and scales each bar against the largest value in its axis group.</p>
+    <p><a href="../">all iterations</a></p>
+  </footer>
+</main>
+<div id="ghost" hidden></div>
+<div id="refusal" role="alertdialog" aria-live="assertive" hidden></div>
+<script type="module" src="seven.mjs"></script>
+</body>
+</html>
