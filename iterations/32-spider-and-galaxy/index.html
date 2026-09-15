@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="color-scheme" content="dark">
+<title>Spider and Galaxy — one universe, two views</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header id="bar">
+  <span id="wordmark">SPIDER · GALAXY</span>
+  <span id="bridgeLine" class="dim">measuring the bridge…</span>
+</header>
+
+<main id="split">
+  <section id="spiderPane" class="pane" aria-label="The spider's graph, drawn from its own published JSON">
+    <div class="ptitle">
+      <label for="graphPick" class="dim">spider graph</label>
+      <select id="graphPick" aria-label="spider graph to draw"></select>
+      <input id="findNode" type="search" placeholder="find node" aria-label="find a node by its label" autocomplete="off">
+    </div>
+    <div id="spiderStage" class="stage"></div>
+    <div id="spiderFoot" class="pfoot dim">loading the spider's manifest…</div>
+  </section>
+  <section id="waferPane" class="pane" aria-label="The dark wafer: every numbered line of code, placed by its own number">
+    <div class="ptitle">
+      <span class="dim">dark wafer</span>
+      <button id="wakeBlocks" type="button">wake named functions <span id="wakeBlocksTag" class="tag">[WAIT]</span></button>
+      <button id="clearWake" type="button">clear</button>
+    </div>
+    <div id="waferStage" class="stage"></div>
+    <div id="waferFoot" class="pfoot dim">loading the numbered database…</div>
+  </section>
+</main>
+
+<section id="say" aria-live="polite">
+  <div id="sayBody" class="dim">Tap a spider node to find it in the numbered universe. Tap a lit line on the wafer to find its spider node.</div>
+</section>
+
+<section id="drawers">
+  <details id="questions">
+    <summary>Questions</summary>
+    <div id="qBody" class="dim">computing…</div>
+  </details>
+  <details id="testPanel">
+    <summary>Spider test</summary>
+    <div id="tBody" class="dim">measured as graphs load…</div>
+  </details>
+  <details id="rules">
+    <summary>How this page loads</summary>
+    <div id="rBody" class="dim"></div>
+  </details>
+</section>
+
+<noscript><p class="dim" style="padding:1rem">Both views are drawn from published data at run time, so this page needs JavaScript.</p></noscript>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
