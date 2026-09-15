@@ -23,6 +23,7 @@
 import { readGraph, nodeRefs, indexRegister, counterpart, nodesForBlock, pathCovers } from './bridge.mjs';
 import { createSpider } from './spider-pane.mjs';
 import { createWafer, MAX_DRAWN, DATA } from './wafer-pane.mjs';
+import { readLink } from './link.mjs';
 import { esc, fmt } from '../../lib.mjs';
 
 export const SHA = 'd9cd18b0e2034325814924e6e4a0e958014f2748';
@@ -205,11 +206,12 @@ async function keysForBlock(sym) {
 }
 
 let tapSeq = 0;
-async function tapSpider(i) {
+async function tapSpider(i, fromLink = false) {
   const seq = ++tapSeq;
   const s = st.graphs.get(st.current); if (!s?.graph) return;
   const n = s.graph.nodes[i];
   spider.focus(i);
+  if (!fromLink) { writeSelection(n); linkBox(null); }
   let refs = nodeRefs(st.current, n);
   if (!st.reg) { say('<p class="dim">The block register is still loading.</p>'); return; }
   if (refs.kind === 'family' && !st.families) { say(`<h2>${esc(n.label)}</h2><p class="dim">This node names family ${refs.family}; loading the family index…</p>`); await ensureFamilies(); if (seq !== tapSeq) return; computeBridge(); spider.setBridge(st.bridge); measureBridge(); }
@@ -280,6 +282,112 @@ function tapWafer(x, y) {
     return;
   }
   say(head + `<p class="known">${fmt(list.length)} node(s) of ${esc(g.title)} lit on the spider:</p><ul>${list.slice(0, 10).map(([i, why]) => `<li>${esc(s.graph.nodes[i].label)} <span class="dim">· ${esc(why)}</span></li>`).join('')}</ul>${list.length > 10 ? `<p class="dim">first ten of ${fmt(list.length)} listed; all are ringed on the spider.</p>` : ''}`);
+}
+
+/* ── links in and out: ?graph= ?node= ?key= ?repo= ?path= (link.mjs) ─────────
+   A link selects nodes exactly as a manual tap does (tapSpider). A manual tap
+   or graph choice writes the selection back with replaceState, keeping every
+   parameter it does not own. */
+const OWN = ['node', 'key', 'repo', 'path'];
+function replaceQuery(edit) {
+  const u = new URL(location.href);
+  edit(u.searchParams);
+  const next = u.pathname + u.search + u.hash;
+  if (next !== location.pathname + location.search + location.hash) history.replaceState(history.state, '', next);
+}
+function writeSelection(n) {
+  const r = nodeRefs(st.current, n);
+  replaceQuery(q => {
+    q.set('graph', st.current); for (const k of OWN) q.delete(k);
+    q.set('node', String(n.id));
+    if (r.kind === 'block') q.set('key', 'block:' + r.block);
+    else if (r.kind === 'family') q.set('key', 'family:' + r.family);
+    else if (r.kind === 'path') { q.set('repo', r.repo); if (r.path) q.set('path', r.path); }
+  });
+}
+function writeGraphChoice(id) { replaceQuery(q => { q.set('graph', id); for (const k of OWN) q.delete(k); }); }
+
+/* The link strip: warnings (always, while the link carries them) and the outcome. */
+function linkBox(outcome) {
+  const box = $('linkBox'), L = st.link;
+  const warn = L && L.warnings.length ? `<p class="refuse">Link warning${L.warnings.length > 1 ? 's' : ''}:</p><ul>${L.warnings.map(w => `<li class="refuse">${esc(w)}</li>`).join('')}</ul>` : '';
+  box.innerHTML = warn + (outcome || '');
+  box.hidden = !box.innerHTML;
+}
+
+const byIndex = list => { const m = new Map(); for (const [i, why] of list) if (!m.has(i)) m.set(i, why); return [...m]; };
+
+/* Which nodes of the drawn graph a link parameter names, and how. */
+async function linkMatches(kind) {
+  const L = st.link, s = st.graphs.get(st.current), nodes = s.graph.nodes, gid = st.current;
+  if (kind === 'node') {
+    const i = nodes.findIndex(n => String(n.id) === L.node);
+    return { list: i < 0 ? [] : [[i, 'node id ' + L.node]], why: i < 0 ? `no node has the id "${L.node}"` : '' };
+  }
+  if (kind === 'repo') {
+    const direct = [];
+    nodes.forEach((n, i) => { const r = nodeRefs(gid, n); if (r.kind === 'path' && r.repo === L.repo && pathCovers(r.path, L.path || '')) direct.push([i, 'names ' + r.repo + (r.path ? '/' + r.path : '')]); });
+    const files = (st.reg.byRepo.get(L.repo) || []).filter(f => pathCovers(L.path || '', f.path));
+    const syms = [...new Set(files.map(f => f.symbol))];
+    const via = syms.flatMap(sym => nodesForBlock(sym, null, gid, nodes, st.reg).map(([i, w]) => [i, w + ' (the register places block ' + sym + ' at this path)']));
+    return { list: byIndex([...direct, ...via]), why: `the live register records ${fmt(files.length)} file(s) at or under ${L.repo}${L.path ? '/' + L.path : ''}${syms.length ? ' (blocks ' + syms.join(', ') + ')' : ''}, and no node names that path or those blocks` };
+  }
+  const k = L.key;
+  if (k.kind === 'block') {
+    const list = nodesForBlock(k.block, null, gid, nodes, st.reg);
+    list.sort((a, b) => (b[1].startsWith('names block') ? 1 : 0) - (a[1].startsWith('names block') ? 1 : 0));
+    return { list, why: st.reg.bySymbol.has(k.block) ? `block ${k.block} is in the live register, but no node names it or a file of it` : `block ${k.block} is not in the live register, and no node names it` };
+  }
+  if (!(await ensureFamilies())) return { list: [], why: 'the family index could not load' };
+  const famList = [];
+  if (k.kind === 'family') {
+    const f = st.families.get(k.family);
+    if (!f) return { list: [], why: `family ${k.family} is not in the numbered database` };
+    famList.push(f);
+  } else {
+    if (!(await ensureFamLines())) return { list: [], why: 'the family line index could not load' };
+    for (const f of st.famArr) {
+      const sub = st.famLines.subarray(f.lineOffset, f.lineOffset + f.lineCount);
+      if (sub.includes(k.line)) famList.push(f);
+    }
+    if (!famList.length) return { list: [], why: `line ${k.line} is carried by no numbered function family, so no block or family can name it` };
+  }
+  const list = [];
+  for (const f of famList) {
+    nodes.forEach((n, i) => { const r = nodeRefs(gid, n); if (r.kind === 'family' && r.family === f.n) list.push([i, 'names family ' + f.n]); });
+    if (f.block) list.push(...nodesForBlock(f.block, f.n, gid, nodes, st.reg).map(([i, w]) => [i, w + ' (family ' + f.n + ' ' + f.name + ')']));
+  }
+  const fams = famList.slice(0, 6).map(f => f.n + ' ' + f.name + (f.block ? ' / block ' + f.block : '')).join('; ') + (famList.length > 6 ? ` and ${famList.length - 6} more` : '');
+  return { list: byIndex(list), why: `${k.kind === 'line' ? 'line ' + k.line + ' is carried by famil' + (famList.length > 1 ? 'ies ' : 'y ') : 'family '}${fams}, and no node names ${famList.length > 1 ? 'those families or their blocks' : 'that family or its block'}` };
+}
+
+async function applyLink() {
+  const L = st.link;
+  if (!L || !L.asked.length) return;
+  const g = st.manifest.graphs.find(x => x.id === st.current), s = st.graphs.get(st.current);
+  const asked = esc(L.asked.join(' · '));
+  if (s?.status !== 'OK') { linkBox(`<p class="refuse">Not in the spider yet: ${esc(g.title)} is ${esc(s?.status || 'not loaded')}, so the link's ${asked} cannot be looked for.</p>`); return; }
+  if (!st.reg) { linkBox(`<p class="refuse">Not in the spider yet: the block register did not load, so the link's ${asked} cannot be looked for.</p>`); return; }
+  const tries = [];
+  if (L.node != null) tries.push(['node', 'node=' + L.node]);
+  if (L.key) tries.push(['key', 'key=' + L.key.raw]);
+  if (L.repo) tries.push(['repo', 'repo=' + L.repo + (L.path ? ' path=' + L.path : '')]);
+  const misses = [];
+  for (const [kind, label] of tries) {
+    const r = await linkMatches(kind);
+    if (!r.list.length) { misses.push(`${esc(label)}: ${esc(r.why)}`); continue; }
+    const [i] = r.list[0];
+    try { await tapSpider(i, true); } catch (e) { misses.push(`${esc(label)}: the tap failed: ${esc(e.message)}`); continue; }
+    if (r.list.length > 1) spider.highlight(r.list);
+    st.linkSelected = { by: label, nodes: r.list.map(([j]) => String(s.graph.nodes[j].id)) };
+    linkBox(`<p class="known">Opened by the link at ${esc(s.graph.nodes[i].label)} in ${esc(g.title)}: ${esc(label)} ${esc(r.list[0][1])}.${r.list.length > 1 ? ` ${fmt(r.list.length)} nodes match; all are ringed on the spider: ${r.list.slice(0, 8).map(([j]) => esc(s.graph.nodes[j].label)).join(', ')}${r.list.length > 8 ? ' …' : ''}.` : ''}</p>`
+      + (misses.length ? `<p class="dim">Tried first: ${misses.join('; ')}.</p>` : ''));
+    return;
+  }
+  st.linkSelected = { by: null, nodes: [] };
+  spider.highlight([]);
+  linkBox(`<p class="refuse">Not in the spider yet: no node of ${esc(g.title)} (${fmt(s.graph.nodes.length)} nodes read) matches the link's ${asked}.</p><ul>${misses.map(m => `<li class="dim">${m}</li>`).join('')}</ul>`);
+  say(`<h2>${asked}</h2><p class="refuse">Not in the spider yet: ${misses.join('; ')}.</p><p class="dim">Choose another graph, or tap a node.</p>`);
 }
 
 /* ── the named-functions toggle ────────────────────────────────────────────── */
@@ -399,7 +507,7 @@ const MAX_LABELS_TEXT = 28;
   writeRules();
   import(CDN + 'deeplink/contract.js').then(m => { st.contract = m; writeTest(); }).catch(e => { st.contractError = e.message; });
 
-  wafer.load().catch(e => { $('waferFoot').textContent = 'Could not load the numbered database: ' + e.message; });
+  const waferP = wafer.load().then(() => true, e => { $('waferFoot').textContent = 'Could not load the numbered database: ' + e.message; return false; });
 
   try {
     st.manifest = await getJSON(CDN + 'spider/manifest.json');
@@ -410,17 +518,20 @@ const MAX_LABELS_TEXT = 28;
   for (const g of st.manifest.graphs) {
     const o = document.createElement('option'); o.value = g.id; o.textContent = optionText(g); pick.appendChild(o);
   }
-  pick.addEventListener('change', () => showGraph(pick.value));
+  pick.addEventListener('change', () => { writeGraphChoice(pick.value); linkBox(null); showGraph(pick.value); });
+  st.link = readLink(location.search, st.manifest.graphs.map(g => g.id));
+  linkBox(null);
 
   const regP = getJSON(REGISTER).then(r => { st.regRaw = r; st.reg = indexRegister(r); })
     .catch(e => { $('bridgeLine').textContent = 'The block register could not load: ' + e.message; });
   const layP = getJSON(ROOT + 'layers/manifest.json').then(m => { st.layers = m; for (const l of m.layers) st.layerById.set(l.id, l); })
     .catch(e => { say(`<p class="refuse">layers/manifest.json: ${esc(e.message)}; no lines can be woken.</p>`); });
-  const first = new URLSearchParams(location.search).get('graph');
-  const startId = st.manifest.graphs.some(g => g.id === first) ? first : 'federation';
+  const startId = st.link.graph || 'federation';
   await Promise.all([regP, layP, loadGraph(startId)]);
   await showGraph(startId);
   writeQuestions();
+  await waferP;
+  await applyLink();
 })();
 
 window.__pair = { st, spider, wafer };

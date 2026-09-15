@@ -61,6 +61,17 @@ const LAYERS = [
 ];
 const byId = new Map(LAYERS.map(l => [l.id, l]));
 
+/* One module's own layer, module-<Symbol>, pickable when a link names its block
+   (?key=block:<Symbol>, as iteration 36's TOOLS button sends) or its id
+   (?layer=module-<Symbol>). Its value is the feature's properties.lines. */
+function addModuleLayer(id) {
+  if (byId.has(id)) return byId.get(id);
+  const L = { id, label: null, kind: 'routes', value: 'lines (numbered lines in the function, read from properties.lines)',
+    read: f => Number(f.properties?.lines), module: id.slice('module-'.length) };
+  LAYERS.push(L); byId.set(id, L);
+  return L;
+}
+
 /* One model per loaded layer: world positions as tools.mjs wants them. */
 const models = new Map();   /* id -> {routes, routeItem, anchors, values, points, items} */
 
@@ -210,12 +221,79 @@ function pickTool(id) {
   refreshStatic(); requestDraw();
 }
 
+/* This page owns layer, tool and key (key=block:<Symbol> only while that
+   module's layer is picked). Every other parameter is kept as it is. */
+function ownParams() {
+  const out = [];
+  if (picked.layer) out.push(['layer', picked.layer]);
+  out.push(['tool', picked.tool]);
+  const L = byId.get(picked.layer);
+  if (L?.module) out.push(['key', 'block:' + L.module]);
+  return out;
+}
+let started = false;   /* the link's own parameters are left as given until the reader picks */
 function writeURL() {
+  if (!started) return;
   const u = new URL(location.href);
   picked.layer ? u.searchParams.set('layer', picked.layer) : u.searchParams.delete('layer');
   u.searchParams.set('tool', picked.tool);
-  const next = u.pathname + u.search + u.hash;
+  const key = ownParams().find(([k]) => k === 'key');
+  key ? u.searchParams.set('key', key[1]) : u.searchParams.delete('key');
+  const next = u.pathname + u.search.replace(/%2C/gi, ',') + u.hash;
   if (next !== location.pathname + location.search + location.hash) history.replaceState(history.state, '', next);
+}
+/* Iteration 21's app.mjs (imported unchanged) rewrites the query to line, to and
+   layers when a line is flown to, which would drop this page's parameters. Its
+   writes pass through here and get this page's own parameters back. */
+{
+  const nativeReplace = history.replaceState.bind(history);
+  history.replaceState = function (state, title, url) {
+    if (url != null && manifest) {
+      const u = new URL(url, location.href);
+      for (const [k, v] of ownParams()) if (!u.searchParams.has(k)) u.searchParams.set(k, v);
+      url = u.pathname + u.search.replace(/%2C/gi, ',') + u.hash;
+    }
+    return nativeReplace(state, title, url);
+  };
+}
+
+/* ── what a link asks for: ?layer= ?tool= ?key= (and iteration 21's ?line= ?to= ?layers=) ── */
+const READS = ['layer', 'tool', 'key', 'line', 'to', 'layers'];
+function readLink() {
+  const q = new URL(location.href).searchParams;
+  const warn = [], out = { warn };
+  for (const k of new Set(q.keys())) {
+    if (!READS.includes(k)) warn.push(`?${k}=${q.get(k)} is not a parameter this page reads (it reads ${READS.join(', ')}); it was not used`);
+    else if (q.getAll(k).length > 1) warn.push(`?${k}= was given ${q.getAll(k).length} times; only the first, "${q.get(k)}", was used`);
+  }
+  const key = q.get('key');
+  if (key !== null) {
+    const m = /^block:([A-Za-z][A-Za-z0-9]{0,5})$/.exec(key.trim());
+    if (m) out.block = m[1];
+    else warn.push(`key=${key} is malformed or not one this page reads: it reads key=block:<Symbol> (a module's layer); it was not used`);
+  }
+  const layer = q.get('layer');
+  if (layer !== null) {
+    if (/^module-[A-Za-z][A-Za-z0-9]{0,5}$/.test(layer) && manifest.layers.some(l => l.id === layer)) out.layer = addModuleLayer(layer).id;
+    else if (byId.has(layer) && (byId.get(layer).kind === 'modules' || manifest.layers.some(l => l.id === layer))) out.layer = layer;
+    else warn.push(`layer=${layer} is not a layer this page can pick (it picks ${LAYERS.filter(L => L.kind === 'modules' || manifest.layers.some(l => l.id === L.id)).map(L => L.id).join(', ')}, or module-<Symbol> when layers/manifest.json lists it); it was not used`);
+  }
+  const tool = q.get('tool');
+  if (tool !== null) {
+    if (toolById.has(tool)) out.tool = tool;
+    else warn.push(`tool=${tool} is not a tool of this page (it has ${TOOL_CHOICES.map(t => t.id).join(', ')}); the 400kV engine is used instead`);
+  }
+  return out;
+}
+function showLink(link, outcome) {
+  const box = $('linkWarn');
+  box.replaceChildren();
+  if (outcome) box.append(el('div', outcome.cls, outcome.text));
+  if (link.warn.length) {
+    box.append(el('div', 'refuse', `Link warning${link.warn.length > 1 ? 's' : ''}:`));
+    for (const w of link.warn) box.append(el('div', 'refuse', '· ' + w));
+  }
+  box.hidden = !box.childNodes.length;
 }
 
 /* ── Questions and machine detail, per tool (re-filled, never rebuilt per frame) ── */
@@ -382,13 +460,27 @@ Object.defineProperty(window, '__tools33', { value: Object.freeze({
     $('layerRows').textContent = 'Layers unavailable: ' + e.message + '. The wafer itself is unaffected.';
     return;
   }
+  const link = readLink();
+  let outcome = null, startLayer = link.layer || null;
+  if (link.block) {
+    const id = 'module-' + link.block;
+    if (manifest.layers.some(l => l.id === id)) {
+      addModuleLayer(id);
+      outcome = { cls: 'known', text: `Opened by the link at key=block:${link.block}: layer ${id} is picked${link.layer && link.layer !== id ? ` (in place of layer=${link.layer}, which the key narrows)` : ''}.` };
+      startLayer = id;
+    } else {
+      outcome = { cls: 'refuse', text: `key=block:${link.block}: layers/manifest.json lists no ${id} layer (${manifest.layers.length} layers read), so there is no module layer to draw for it${startLayer ? `; layer=${startLayer} is drawn as the link also asked` : ''}.` };
+    }
+  }
   buildPanel();
-  pickTool(new URL(location.href).searchParams.get('tool') || 'transmission');
+  showLink(link, outcome);
+  window.__link33 = Object.freeze({ warnings: link.warn.slice(), outcome: outcome && outcome.text, layer: startLayer });
+  pickTool(link.tool || 'transmission');
   cache.get(ROOT + 'atlas/index.html')
     .then(html => { atlas = parseAtlasTopology(html); atlasWhy = ''; })
     .catch(e => { atlasWhy = 'Atlas topology unavailable: ' + e.message; })
     .finally(() => { staticSig = ''; refreshStatic(); requestDraw(); });
-  const want = new URL(location.href).searchParams.get('layer');
-  if (want && byId.has(want) && $('L-' + want)) pickLayer(want);
+  if (startLayer && $('L-' + startLayer)) pickLayer(startLayer);
+  started = true;
   refreshStatic();
 })();

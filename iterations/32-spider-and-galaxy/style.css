@@ -41,6 +41,8 @@ a{color:var(--beam)}
 #say dd{margin:0; overflow-wrap:anywhere}
 #say p{margin:.3rem 0 0}
 #say ul{margin:.25rem 0 0; padding-left:1.1rem}
+#linkBox{border-bottom:1px dashed var(--edge); padding-bottom:.35rem; margin-bottom:.35rem; overflow-wrap:anywhere}
+#linkBox p{margin:0}
 .refuse{color:var(--lit)}
 .known{color:var(--beam)}
 
