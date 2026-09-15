@@ -16,6 +16,8 @@
   <span id="count" class="dim">loading the numbered database…</span>
 </header>
 
+<details id="questions"><summary>Questions</summary><div id="qbody"><dl id="qlist"></dl><p id="machine" class="dim"></p></div></details>
+
 <form id="beam" autocomplete="off">
   <input id="a" inputmode="numeric" pattern="[0-9]*" placeholder="line number" aria-label="line number to fly to">
   <input id="b" inputmode="numeric" pattern="[0-9]*" placeholder="connect to…" aria-label="second line number to connect to">
@@ -37,5 +39,6 @@
 
 <script type="module" src="app.mjs"></script>
 <script type="module" src="layers-panel.mjs"></script>
+<script type="module" src="questions.mjs"></script>
 </body>
 </html>
