@@ -1,0 +1,87 @@
+{
+ "substrate": "wafer.v1",
+ "built_utc": "2026-09-15T16:17:31Z",
+ "layers": [
+  {
+   "id": "copying",
+   "label": "Real copying",
+   "group": "WHAT IS WRITTEN TWICE",
+   "preload": false,
+   "colour": "#ff8a65",
+   "evidence": "lines carried by 2 to 40 function families and at least 12 characters long",
+   "note": "Where the estate genuinely repeats itself. Lines in more than forty families are structure, braces and imports, and lines under twelve characters carry too little to be evidence; both are discarded, and what remains is the copying worth a human look.",
+   "file": "layers/copying.json",
+   "bytes": 4073845,
+   "features": 41286,
+   "sha256": "3ef484f075b6392d43a970e8446ab7877e8b43d90470ec5fe3d0a921c1ea577f"
+  },
+  {
+   "id": "crossname",
+   "label": "Copied under another name",
+   "group": "WHAT IS WRITTEN TWICE",
+   "preload": false,
+   "colour": "#f06292",
+   "draws": "lines",
+   "evidence": "pairs of differently named families sharing 6+ usable lines, neither containing the other",
+   "note": "The copying nobody recorded. Two functions with different names and substantially the same body. Pairs where one family wholly contains the other are excluded because they are a class and its own method, not a copy. The strongest four hundred are drawn.",
+   "file": "layers/crossname.json",
+   "bytes": 98915,
+   "features": 400,
+   "sha256": "70c534d40e2d9e2c85256a59cafa138d79ed60dd4511633790e3d5d74b6b0a7a"
+  },
+  {
+   "id": "blocks",
+   "label": "Functions in a named block",
+   "group": "THE WORKING MODULES",
+   "preload": false,
+   "colour": "#5ec8f2",
+   "evidence": "the live block register, each function family a block names, placed at its first line",
+   "note": "Every function the estate has put inside a numbered block, placed where that function's first line sits on the wafer. These are the modules with a repository, a commit and a path. Tap one to see which block claims it.",
+   "file": "layers/blocks.json",
+   "bytes": 237020,
+   "features": 1302,
+   "sha256": "d59e2eecb96dd44d50710994f9da3661f73f72b6fcb8781aa59dfb10431485a7"
+  },
+  {
+   "id": "engine",
+   "label": "The grid engine",
+   "group": "THE WORKING MODULES",
+   "preload": false,
+   "colour": "#7fd6a2",
+   "evidence": "blocks whose repository is Ventusltd/ventus-grid-engine in the live register",
+   "note": "The grid mathematics: distance and bearing, voltage drop, firm capacity, connection capacity, ratings, route obstacles. The smallest layer on the wafer and the one the estate exists to serve.",
+   "file": "layers/engine.json",
+   "bytes": 38864,
+   "features": 259,
+   "sha256": "795ff94a77d8994f4ed97c30782aca3cca8d406596b5ac6efc7d52dbd45c6512"
+  },
+  {
+   "id": "declared",
+   "label": "Declared dependencies",
+   "group": "WHAT FITS WITH WHAT",
+   "preload": false,
+   "colour": "#8ea8ff",
+   "draws": "lines",
+   "evidence": "depends_on in the live block register",
+   "note": "What the authors wrote down: block A depends on block B, drawn between the first numbered line of each. It is thin, because most of the estate declares nothing at all.",
+   "file": "layers/declared.json",
+   "bytes": 28336,
+   "features": 177,
+   "sha256": "12aa7ef949155f8370ee54750d21544232c62ab67057c4b7114f15bb00b57765"
+  },
+  {
+   "id": "learned",
+   "label": "Learned by failure",
+   "group": "WHAT FITS WITH WHAT",
+   "preload": false,
+   "colour": "#ffd54a",
+   "draws": "lines",
+   "evidence": "the chemistry star's recorded composition failures",
+   "note": "Rules nobody declared that the estate learned by trying. Each line is a decay message counted across compositions, and the count is carried with it.",
+   "file": "layers/learned.json",
+   "bytes": 1514,
+   "features": 0,
+   "sha256": "b3878271c152c1df84bdfb3bbd447890a75d370d2eda3ef9b87892c6d36413a1"
+  }
+ ]
+}
