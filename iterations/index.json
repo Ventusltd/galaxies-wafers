@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 19,
+ "count": 21,
  "iterations": [
   {
    "n": 1,
@@ -79,9 +79,9 @@
    "dir": "09-deeplink-receiver",
    "slug": "deeplink-receiver",
    "title": "The Line Wafer — iteration 09, the deep-link receiver",
-   "commit": "deff7ad232feb9bd219f005f3f693fd687d054b1",
-   "committed": "2026-09-15T19:31:30+01:00",
-   "subject": "09 loads layers from a layers-only link; CI no longer passes a page whose layers never load"
+   "commit": "32b19f3c9071926acaedbe0444a635ae960347ca",
+   "committed": "2026-09-15T20:10:32+01:00",
+   "subject": "09: a layers-only link with an invalid zoom or to loads nothing (Codex review)"
   },
   {
    "n": 10,
@@ -106,6 +106,22 @@
     "sha": "e0185b61bda31dee576f105a7ef16c4e28fae0e3",
     "author": "Codex",
     "copied_by": "Opus review: private scan clean, relative paths only, wafer.mjs identical to the galaxy root, loads with zero page errors in Chrome and WebKit"
+   }
+  },
+  {
+   "n": 12,
+   "dir": "12-visibility-lab",
+   "slug": "visibility-lab",
+   "title": "Layer visibility · Code geometry",
+   "commit": "f45c79f10d76064f8ebc1b2afe380ef1780561c9",
+   "committed": "2026-09-15T20:10:32+01:00",
+   "subject": "iteration 12 visibility lab (Codex), copied from testcode d2add56 after review",
+   "source": {
+    "repo": "Ventusltd/testcode",
+    "path": "sandbox/202609151852-galaxy-visibility/",
+    "sha": "d2add56f32b4759bd52128a9d55ed409c3f5a5a7",
+    "author": "Codex",
+    "copied_by": "Opus review: private scan clean, no external fetches, wafer.mjs same git blob as the galaxy root; Codex hosted CI 35011273409 passed in Chromium and WebKit at phone and desktop size"
    }
   },
   {
@@ -179,6 +195,15 @@
    "commit": "6aec5dd4f3f3dba0909ddd9648a874761fe2977e",
    "committed": "2026-09-15T20:05:47+01:00",
    "subject": "iteration 31 code card everywhere: any tap opens a code card; change a digit locally and run the engine module"
+  },
+  {
+   "n": 34,
+   "dir": "34-cpu-floorplan",
+   "slug": "cpu-floorplan",
+   "title": "Logical Floorplan — the estate's code through a textbook processor",
+   "commit": "5d4d7cdb3f1dd28c230cddfd6a66c2c2d0142763",
+   "committed": "2026-09-15T20:07:52+01:00",
+   "subject": "iteration 34 Logical Floorplan: engine/voltage-drop.js walked through a textbook five-stage pipeline"
   }
  ]
 }
