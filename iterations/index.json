@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 24,
+ "count": 25,
  "iterations": [
   {
    "n": 1,
@@ -129,9 +129,9 @@
    "dir": "13-diversified-demand",
    "slug": "diversified-demand",
    "title": "One group, one assumption · Demand lab",
-   "commit": "",
-   "committed": "",
-   "subject": "",
+   "commit": "03aebff23517cdced682f0d4cb2a2fcbe437800e",
+   "committed": "2026-09-15T20:17:50+01:00",
+   "subject": "iteration 13 diversified demand (Codex), copied from testcode 1eac47b after review",
    "source": {
     "repo": "Ventusltd/testcode",
     "path": "sandbox/202609151910-galaxy-demand/",
@@ -148,6 +148,15 @@
    "commit": "1ad0e88747e8311f83e8e71d790b3658a30311b4",
    "committed": "2026-09-15T19:39:25+01:00",
    "subject": "iteration 21 dark pixels: the wafer ground dark, only lines a ticked layer charts are woken"
+  },
+  {
+   "n": 22,
+   "dir": "22-fast-zoom",
+   "slug": "fast-zoom",
+   "title": "Fast Zoom — The Line Wafer, iteration 22",
+   "commit": "266209ed636498d241b9a80c3e27c04845a0905d",
+   "committed": "2026-09-15T20:18:03+01:00",
+   "subject": "iteration 22 fast zoom: cached wafer while moving, culled points, Grid Atlas loading with radius-band tiles"
   },
   {
    "n": 24,
