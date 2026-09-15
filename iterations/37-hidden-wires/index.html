@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Hidden Wires</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="hw.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>HIDDEN WIRES</h1>
+    <p class="dim">A hidden wire is a need a part never declared, found by unplugging or swapping parts and watching what breaks. Each dot is a block in the public block register. Each dashed wire is a recorded failure that names the module the failing part needed, drawn from that part to the module, as thick as the number of compositions that failed on it. Solid cased lines are the needs the register declares.</p>
+    <p id="summary" class="summary">WAIT — nothing is fetched until you tick a layer. Tick <b>Hidden wires</b> to begin.</p>
+  </header>
+
+  <section class="layers" aria-label="Layers">
+    <label class="layer"><input type="checkbox" data-layer="hidden"><span id="lbl-hidden" data-base-label="Hidden wires · star-maker failures">Hidden wires · star-maker failures [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="declared"><span id="lbl-declared" data-base-label="Declared needs · register depends_on">Declared needs · register depends_on [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="parts"><span id="lbl-parts" data-base-label="Parts · block register">Parts · block register [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="vaccines"><span id="lbl-vaccines" data-base-label="Vaccine names · cvaa">Vaccine names · cvaa [WAIT]</span></label>
+  </section>
+
+  <div class="seg" id="filter" role="group" aria-label="Which wires">
+    <button type="button" data-f="all" aria-pressed="true">all hidden wires</button>
+    <button type="button" data-f="undeclared" aria-pressed="false">hidden, not yet declared</button>
+  </div>
+
+  <div class="plane">
+    <canvas id="plane" aria-label="Parts and wires. Drag to pan, pinch or wheel to zoom, tap a wire or a dot to read it."></canvas>
+    <button type="button" id="fit" class="fit">fit</button>
+    <div id="drawn" class="drawn dim"></div>
+  </div>
+
+  <section id="card" class="card" aria-live="polite">
+    <p class="dim">Tap a dashed wire to read its failure. Tap a dot to read its block.</p>
+  </section>
+
+  <h2>WORK LIST · <span id="worktitle">hidden wires</span></h2>
+  <ul id="worklist" class="rows"><li class="dim">WAIT — tick Hidden wires.</li></ul>
+
+  <h2>FAILURES THAT NAME NO NEEDED PART</h2>
+  <p class="dim small">Not drawn: the message does not say which module was missing, so no wire can be drawn without inventing its far end.</p>
+  <ul id="unnamed" class="rows"><li class="dim">WAIT — tick Hidden wires.</li></ul>
+
+  <details id="questions" class="questions">
+    <summary>Questions</summary>
+    <dl>
+      <dt>1. How does this help draw a system or a single-line diagram?</dt>
+      <dd>It draws no busbar, feeder, transformer, cable route, protection or earthing itself. It shows why the part that draws the single-line panel stops before drawing anything. In gridatlas commit <code>ece848117a6d</code>, <code>atlas/cartridges/202609080850-sld-sandbox-v9-8.js</code> throws <q>sld-sandbox requires the sld-styles module</q> at line 1581 when <code>window.__GRIDATLAS_MODULES__.sldStyles</code> is absent; that module's <code>sldPanel(PANEL_ID)</code> (<code>atlas/modules/202609040400-sld-styles.js</code> line 213) is the SLD panel's stylesheet, installed at sandbox line 7614. The same cartridge's grid-scope module throws <q>grid-scope requires the geodesy module</q> at line 46; geodesy supplies the distances for the sandbox's straight lines to the nearest mapped substations (lines 1653–1659), which the sandbox itself says are not cable routes (line 1566). The wire data field is <code>compounds[].decays[].text</code>; its thickness is the count of <code>compounds[]</code> carrying that text.</dd>
+      <dt>2. What is this code used for?</dt>
+      <dd>This page: <code>wires.mjs</code> <code>parseMessage</code>, <code>countFailures</code>, <code>unplugSuppliers</code>, <code>decayEdges</code>, <code>registerIndex</code>, <code>declaredNow</code>, <code>vaccineMentions</code>, <code>layout</code>; drawn by <code>app.mjs</code> on one canvas. It reads star-maker <code>chemistry/compounds.json</code>, <code>chemistry/graph.json</code> and <code>CHEMISTRY.md</code> at commit <span class="pin">c5bf5f6518fe</span>, which star-maker writes by arithmetic over the compositions its bench drove in a browser. The failing code: the sld-sandbox cartridge (register block <span id="q-host">not yet known</span>), listed in the register as used by <span id="q-used">not yet known</span> blocks (the register's own <code>used_by</code>). The sld-styles module header (lines 7–8) says <q>The sibling substation cartridge carries this module because it executes before sld-sandbox</q>; the substation-intelligence cartridge <code>202609062358</code> lists both <code>202609011950-geodesy.js</code> (line 9) and <code>202609040400-sld-styles.js</code> (line 22) among its parts.</dd>
+      <dt>3. Where does it lead next?</dt>
+      <dd>To the substation-intelligence cartridge, which carries both needed modules (header above) and which the unplug compositions single out: <span id="q-supplier">not yet known</span>. star-maker's README says each hidden wire <q>becomes a declared NEEDS in the next composition manifest and a cvaa vaccine</q>. Measured now: <span id="q-work">not yet known</span>.</dd>
+    </dl>
+  </details>
+  <p id="machine" class="machine small">Machine detail · not yet known: tick Hidden wires.</p>
+
+  <footer class="dim small">
+    <p id="loadingrule">Loading, as Grid Atlas does it: every layer starts hidden and unfetched; ticking it fetches its files through one queue of at most 3 requests, each with a 15 s timeout; a file shared by two layers is fetched once; a failed fetch can be retried by ticking again; unticking hides and keeps the data. Each source is one whole file, so there are no tiles: at most 5 files are ever fetched (block register, compounds, graph, legend, cvaa listing). Drawing touches only dots and lines inside the view; the line under the plane says how many were drawn in the last frame. No DOM element is created per wire, line or dot.</p>
+    <p id="prov"></p>
+    <p>Wire colour is one neutral tone for every wire: a failure is not a verdict. <a href="../">every version</a></p>
+  </footer>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
