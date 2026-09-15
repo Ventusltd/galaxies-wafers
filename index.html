@@ -14,6 +14,10 @@
 <header id="bar">
   <span id="wordmark">THE LINE WAFER</span>
   <span id="count" class="dim">loading the numbered database…</span>
+  <span id="tools">
+    <label id="groundToggle"><input type="checkbox" id="darkGround"> dark ground</label>
+    <details id="questions"><summary>Questions</summary><dl id="qlist"></dl><p id="machine" class="dim"></p><p id="budget" class="dim">frame budget: waiting for the camera to move</p><p id="thin" class="dim"></p></details>
+  </span>
 </header>
 
 <form id="beam" autocomplete="off">
@@ -22,6 +26,8 @@
   <button id="go" type="submit">FLY</button>
 </form>
 
+<section id="card" hidden aria-live="polite"></section>
+
 <section id="panel" hidden>
   <button id="close" type="button" aria-label="close">✕</button>
   <div id="panelbody"></div>
@@ -29,7 +35,7 @@
 
 <footer id="foot">
   <span id="prov" class="dim">provenance loading</span>
-  <span id="hint" class="dim">drag to steer · pinch or scroll to focus the beam · tap a line</span>
+  <span id="hint" class="dim">drag to steer · pinch or scroll to focus the beam · tap anything for its code card</span>
   <a id="proofs" href="proof/">check every claim on this page</a>
 </footer>
 
