@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 21,
+ "count": 22,
  "iterations": [
   {
    "n": 1,
@@ -195,6 +195,15 @@
    "commit": "6aec5dd4f3f3dba0909ddd9648a874761fe2977e",
    "committed": "2026-09-15T20:05:47+01:00",
    "subject": "iteration 31 code card everywhere: any tap opens a code card; change a digit locally and run the engine module"
+  },
+  {
+   "n": 33,
+   "dir": "33-engines-as-tools",
+   "slug": "engines-as-tools",
+   "title": "Engines as Tools — the 400kV engine's drawing logic, applied to any layer",
+   "commit": "e710bc174d0400fa82f0aabeedab90bcc93efe69",
+   "committed": "2026-09-15T20:10:28+01:00",
+   "subject": "iteration 33 Engines as Tools: the 400kV engine's drawing logic as one reusable tools module"
   },
   {
    "n": 34,
