@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="color-scheme" content="dark">
+<title>Apps, Layers, Substrate — the estate's apps as tabs over its numbered lines</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="stage" aria-label="Every permanently numbered line of code in the estate, placed by its own number."></canvas>
+
+<header id="bar">
+  <span id="wordmark">APPS · LAYERS · SUBSTRATE</span>
+  <span id="count" class="dim">loading the numbered database…</span>
+</header>
+
+<nav id="apps" role="tablist" aria-label="apps of the estate, derived from the block register"></nav>
+
+<section id="appcard" aria-live="polite">
+  <div id="apphead">
+    <button id="appfold" type="button" aria-label="fold the app card" aria-expanded="true">▾</button>
+    <h1 id="appname"></h1>
+    <label class="dim" id="depthlabel">group by
+      <select id="depth"><option value="1">top folder</option><option value="2">two folders</option></select>
+    </label>
+  </div>
+  <div id="appsrc"></div>
+  <div id="appbody"></div>
+  <div id="appmem" class="dim"></div>
+</section>
+
+<form id="beam" autocomplete="off">
+  <input id="a" inputmode="numeric" pattern="[0-9]*" placeholder="line number" aria-label="line number to fly to">
+  <input id="b" inputmode="numeric" pattern="[0-9]*" placeholder="connect to…" aria-label="second line number to connect to">
+  <button id="go" type="submit">FLY</button>
+</form>
+
+<section id="panel" hidden>
+  <button id="close" type="button" aria-label="close">✕</button>
+  <div id="panelbody"></div>
+</section>
+
+<footer id="foot">
+  <span id="prov" class="dim">provenance loading</span>
+  <span id="wake" class="dim">tick a layer to wake its lines</span>
+  <span id="hint" class="dim">drag to steer · pinch or scroll to focus the beam · tap a line</span>
+  <a id="proofs" href="../../proof/">check every claim on this page</a>
+</footer>
+
+<noscript><p class="dim" style="padding:1rem">This surface is drawn from the numbered database at run time, so it needs JavaScript. Nothing here is typed into the page.</p></noscript>
+
+<script type="module" src="app.mjs"></script>
+<script type="module" src="layers-panel.mjs"></script>
+<script type="module" src="apps.mjs"></script>
+</body>
+</html>
