@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 18,
+ "count": 19,
  "iterations": [
   {
    "n": 1,
@@ -134,6 +134,15 @@
    "commit": "8ac40522dc09a7340665f922140803603ab5d11a",
    "committed": "2026-09-15T19:38:05+01:00",
    "subject": "iteration 25 one feeder: the physics of one radial line drawn from three engine modules"
+  },
+  {
+   "n": 26,
+   "dir": "26-apps-layers-substrate",
+   "slug": "apps-layers-substrate",
+   "title": "Apps, Layers, Substrate — the estate's apps as tabs over its numbered lines",
+   "commit": "96f3f07bbc30cf64eb4b92105a0a2df1fefdc185",
+   "committed": "2026-09-15T20:05:53+01:00",
+   "subject": "iteration 26 apps-layers-substrate: the estate's apps as tabs, their module layers lit on the dark wafer"
   },
   {
    "n": 27,
