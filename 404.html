@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Galaxies Wafers — not found</title>
+<style>
+body{margin:0;background:#0b0d12;color:#d8dee9;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  padding:calc(env(safe-area-inset-top,0px) + 1.25rem) 1rem 2rem}
+main{max-width:40rem;margin:0 auto}
+h1{font-size:13px;letter-spacing:.14em;margin:0 0 .5rem}
+.dim{color:#8b93a7}
+a{color:#5ec8f2}
+code{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<main>
+<h1>NOT FOUND</h1>
+<p id="msg" class="dim">Checking whether this address is a mistyped version…</p>
+<p><a href="/galaxies-wafers/iterations/">Every version</a> · <a href="/galaxies-wafers/">The Line Wafer</a></p>
+</main>
+<script>
+/* GitHub Pages serves this page for any missing address. A link copied from a
+   phone message often gains a space or loses a hyphen. If the address, with
+   spaces removed, names an iteration that exists, or its two-digit number
+   matches exactly one iteration, go there and keep the query (the layers the
+   link asked for). Otherwise say what was asked and link to every version.
+   Nothing is guessed when two iterations could match. */
+(async () => {
+  const BASE = '/galaxies-wafers/';
+  const msg = document.getElementById('msg');
+  const raw = decodeURIComponent(location.pathname);
+  const rel = raw.startsWith(BASE) ? raw.slice(BASE.length) : raw.replace(/^\//, '');
+  const say = t => { msg.textContent = t; };
+  const m = rel.replace(/\s+/g, '').match(/^iterations\/([^/]+)/);
+  if (!m) { say(`Nothing is published at ${raw}.`); return; }
+  let dirs = [];
+  try {
+    const r = await fetch(BASE + 'iterations/index.json', { cache: 'no-cache' });
+    dirs = (await r.json()).iterations.map(x => x.dir);
+  } catch (e) { say(`Nothing is published at ${raw}, and the version list could not be read: ${e.message}`); return; }
+  const asked = m[1];
+  const squash = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  let hit = dirs.find(d => d === asked) || dirs.find(d => squash(d) === squash(asked));
+  if (!hit) {
+    const n = asked.match(/^(\d{2})/);
+    const byNumber = n ? dirs.filter(d => d.startsWith(n[1] + '-')) : [];
+    if (byNumber.length === 1) hit = byNumber[0];
+  }
+  if (!hit) { say(`Nothing is published at ${raw}, and it does not match exactly one version.`); return; }
+  const dest = `${BASE}iterations/${hit}/${location.search}${location.hash}`;
+  say(`Taking you to ${hit}…`);
+  location.replace(dest);
+})();
+</script>
+</body>
+</html>
