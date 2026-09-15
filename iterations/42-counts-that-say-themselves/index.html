@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Counts That Say Themselves</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="counts.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>COUNTS THAT SAY THEMSELVES</h1>
+    <p class="dim">The estate's grammar says every quantity is computed from live data, never typed, and missing data reads "not yet known". This page tests that rule against the count sentences the public pages publish. Open a section: it fetches each served page and each data file it names, finds the sentence and the line that makes it, recomputes the number from the data under the rule the code states, and prints <b>MATCH</b>, <b>DIFFERS</b> or <b>NOT YET KNOWN</b>. Digits written into a source file are marked <span class="tag typed">typed</span>. No colour here is a verdict.</p>
+    <p id="summary" class="summary">WAIT: nothing is fetched until you open a section.</p>
+  </header>
+
+  <details class="sec" data-sec="stars">
+    <summary><span id="lbl-stars" data-base-label="The stars site · start, table and code pages">The stars site · start, table and code pages [WAIT]</span></summary>
+    <p class="lead small dim">Reads ventusltd.github.io/stars/ start.html, table.html, code.html, blocks/blocks.json, blocks/families.json, code/index.json and the first 2 kB of LINES.md.</p>
+    <ul class="rows" id="rows-stars"></ul>
+  </details>
+
+  <details class="sec" data-sec="lenses">
+    <summary><span id="lbl-lenses" data-base-label="The lenses · countsLine and the pages around it">The lenses · countsLine and the pages around it [WAIT]</span></summary>
+    <p class="lead small dim">The lenses at globalgrid2050.com/testcode read the same stars files, and their countsLine functions are numbered lines of stars LINES.md. Reads three core.js files, nine lens pages and the stars data.</p>
+    <ul class="rows" id="rows-lenses"></ul>
+  </details>
+
+  <details class="sec" data-sec="lines">
+    <summary><span id="lbl-lines" data-base-label="LINES.md · every row counted">LINES.md · every row counted [WAIT]</span></summary>
+    <p class="lead small dim">One large file, streamed and counted row by row; only the counts are kept. It must finish inside the 15 s timeout, or the counts read NOT YET KNOWN.</p>
+    <ul class="rows" id="rows-lines"></ul>
+  </details>
+
+  <details class="sec" data-sec="iter">
+    <summary><span id="lbl-iter" data-base-label="This galaxy · iterations/index.json">This galaxy · iterations/index.json [WAIT]</span></summary>
+    <p class="lead small dim">The index's count against its own rows, the directories in the repository listing, and the directories this host serves.</p>
+    <ul class="rows" id="rows-iter"></ul>
+  </details>
+
+  <details class="sec" data-sec="layers">
+    <summary><span id="lbl-layers" data-base-label="This galaxy · layers/manifest.json">This galaxy · layers/manifest.json [WAIT]</span></summary>
+    <p class="lead small dim">The manifest's layers against the files in the repository and the files served (one HEAD request each). Feature counts are checked one layer at a time, when you ask.</p>
+    <div class="pick"><select id="layer-pick" aria-label="layer to count"><option>open the section first</option></select><button type="button" id="layer-check" disabled>count</button></div>
+    <ul class="rows" id="rows-layers"></ul>
+  </details>
+
+  <details class="sec" data-sec="elements">
+    <summary><span id="lbl-elements" data-base-label="The elements catalogue · provenance.json">The elements catalogue · provenance.json [WAIT]</span></summary>
+    <p class="lead small dim">provenance.json counts against the lengths of its JSON arrays, the numbered database it names, and the live register and LINES.md header served now.</p>
+    <ul class="rows" id="rows-elements"></ul>
+  </details>
+
+  <details id="questions" class="questions">
+    <summary>Questions</summary>
+    <dl>
+      <dt>1. How does this help draw a system or a single-line diagram?</dt>
+      <dd>It draws no busbar, feeder, transformer, cable route, protection or earthing: none yet. It checks the sentences that tell a reader what a drawing draws, because a drawing that states a wrong count misleads the reader about what it draws. The fields it checks: <code>blocks[]</code> and <code>blocks[].kind</code> of stars <code>blocks/blocks.json</code>, the lists of <code>blocks/families.json</code>, <code>families</code> and <code>lines</code> of <code>code/index.json</code>, the rows of <code>LINES.md</code>, <code>count</code> of <code>iterations/index.json</code>, <code>layers[]</code> and <code>layers[].features</code> of <code>layers/manifest.json</code>, and <code>counts</code> of the elements catalogue.</dd>
+      <dt>2. What is this code used for?</dt>
+      <dd><code>countsLine</code> in <code>testcode/202609141350/core.js</code> (copied at 202609141423, 202609141522 and 202609141754) is called by each lens page after <code>loadUniverse()</code> to print its header; rows of stars <code>LINES.md</code> that call <code>countsLine()</code> were found by text search at stars commit 7f9490a5f6d8 (name-match inference). <code>core.countsLine</code> in <code>testcode/202609142225/core.js</code> is the sentence GRAMMAR.md fixes as identical on every lens. <code>table.html</code> and <code>code.html</code> print their own status lines; <code>modular-star/lines.mjs</code> writes the LINES.md header; <code>build/build_iterations_index.py</code> and <code>build/build_layers.py</code> write this galaxy's counts. Each row links its exact file and line, found in the served text when the section opens. This page: <code>audit.mjs</code> <code>findTyped</code>, <code>starsCounts</code>, <code>parseLinesHeader</code>, <code>lineRowCounter</code>, <code>statusOf</code>; <code>app.mjs</code> <code>FetchQueue</code>, <code>fetchOnce</code>, <code>hydrate</code>, <code>fillRow</code>.</dd>
+      <dt>3. Where does it lead next?</dt>
+      <dd id="q-next">not yet known: open a section.</dd>
+    </dl>
+  </details>
+  <p id="machine" class="machine small">Machine detail · not yet known: open a section.</p>
+
+  <footer class="dim small">
+    <p>Loading, as Grid Atlas does it: every section exists from the start and fetches nothing until opened; one queue of 4 carries every request, each with a 15 s timeout; one promise per URL, removed on failure so a retry is possible; only the changed row or label is rewritten. Closing a section keeps what was read.</p>
+    <p>MATCH has a solid rule, DIFFERS a double rule, NOT YET KNOWN a dotted grey rule. Sources are read at main when a section opens, so a row changes when its file changes. <a href="../">every version</a></p>
+  </footer>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
