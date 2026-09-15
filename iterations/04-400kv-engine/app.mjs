@@ -67,10 +67,23 @@ const view = { x: 0, y: 0, zoom: 1, w: 0, h: 0, dpr: 1, focus: -1, link: null };
 /* The one read-only hook for layers: the live camera, and listeners called after every frame. */
 /* Listeners get a frozen scalar snapshot, never the live object: a listener that
    mutates what it received cannot move the wafer's camera. (Codex review.) */
-const snapshot = () => Object.freeze({ x: view.x, y: view.y, zoom: view.zoom, w: view.w, h: view.h, dpr: view.dpr });
+const snapshot = () => Object.freeze({ x: view.x, y: view.y, zoom: view.zoom, w: view.w, h: view.h, dpr: view.dpr, moving: MOTION.moving });
+/* MOVING FRAMES (as iteration 22 and the root page). Every pinch, wheel, drag
+   and fly frame marks the camera as moving; SETTLE_MS after the last one the
+   wafer draws once more with moving false. Layers read `moving` from the
+   snapshot: while it is true they may carry their last full raster instead of
+   drawing it again, and they draw in full on the settle frame. */
+const SETTLE_MS = 150;
+const MOTION = { moving: false, timer: 0 };
+function motion() {
+  MOTION.moving = true;
+  clearTimeout(MOTION.timer);
+  MOTION.timer = setTimeout(() => { MOTION.moving = false; draw(); }, SETTLE_MS);
+}
 /* families: the family index once tier 2 has landed ({families, famLines}), else null;
    'wafer:families' is dispatched on window when it lands or fails. */
 window.__wafer = Object.freeze({ get view() { return snapshot(); }, onDraw: new Set(),
+  get moving() { return MOTION.moving; }, get settleMs() { return SETTLE_MS; },
   get families() { return U.families && U.famLines ? Object.freeze({ families: U.families, famLines: U.famLines }) : null; } });
 
 /* ── the surface ─────────────────────────────────────────────────────────── */
@@ -307,7 +320,7 @@ function flyTo(key, zoom) {
     const e = u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
     view.x = x0 + (x - x0) * e; view.y = y0 + (y - y0) * e;
     view.zoom = Math.exp(Math.log(z0) + (Math.log(z1) - Math.log(z0)) * e);
-    render();
+    motion(); render();
     if (u < 1) requestAnimationFrame(step);
   })(t0);
 }
@@ -467,13 +480,13 @@ function gestures() {
       const [p, q] = [...pts.values()];
       const d = Math.hypot(p[0] - q[0], p[1] - q[1]);
       if (pinch.d > 0) view.zoom = Math.max(0.02, Math.min(4000, pinch.z * (d / pinch.d)));
-      draw(); return;
+      motion(); draw(); return;
     }
     if (pts.size === 1) {
       const dx = e.clientX - prev[0], dy = e.clientY - prev[1];
       moved += Math.abs(dx) + Math.abs(dy);
       view.x -= dx / view.zoom; view.y += dy / view.zoom;
-      draw();
+      motion(); draw();
     }
   });
   const up = e => {
@@ -491,7 +504,7 @@ function gestures() {
     e.preventDefault();
     const f = Math.exp(-e.deltaY * 0.0016);
     view.zoom = Math.max(0.02, Math.min(4000, view.zoom * f));
-    draw();
+    motion(); draw();
   }, { passive: false });
   stage.addEventListener('dblclick', () => { view.focus = -1; view.link = null; $('panel').hidden = true; home(); });
 }
