@@ -1,0 +1,266 @@
+{
+ "type": "CodeTileIndex",
+ "substrate": "wafer.v1",
+ "layer": {
+  "id": "copying",
+  "label": "Real copying",
+  "group": "WHAT IS WRITTEN TWICE",
+  "preload": false,
+  "colour": "#ff8a65",
+  "evidence": "lines carried by 2 to 40 function families and at least 12 characters long",
+  "note": "Where the estate genuinely repeats itself. Lines in more than forty families are structure, braces and imports, and lines under twelve characters carry too little to be evidence; both are discarded, and what remains is the copying worth a human look."
+ },
+ "provenance": {
+  "built_utc": "2026-09-15T16:17:31Z",
+  "sources": [
+   {
+    "path": "globalgrid2050/testcode/202609142202/data/all-lines.meta.json",
+    "sha256": "ca2b6af2539c43fb93ac4d7e7d834b6c38b51779b81ce1975782edd78520556a"
+   },
+   {
+    "path": "globalgrid2050/testcode/202609142202/data/all-lines.bin",
+    "sha256": "8291d2680e43506fd5bda23428bc9906458ed38413fc2c206d32c4b9952b2762"
+   },
+   {
+    "path": "globalgrid2050/testcode/202609142202/data/all-lines.len.bin",
+    "sha256": "2481540d45540a6963efb17c95ff8e9c9bd61359043d4e1ebd31f4742721e118"
+   },
+   {
+    "path": "globalgrid2050/testcode/202609142202/data/families.json",
+    "sha256": "f055ef68089db83b0d7d3016b8dd704df46d6f24d377d43d6ec2f8b8d59dda54"
+   },
+   {
+    "path": "globalgrid2050/testcode/202609142202/data/lines.bin",
+    "sha256": "5a0c36595ccddfff5852fae262a3b69885d94981c83e683e0b4d9c0c7012c83a"
+   }
+  ]
+ },
+ "source": {
+  "file": "layers/copying.json",
+  "features": 41286,
+  "sha256": "3ef484f075b6392d43a970e8446ab7877e8b43d90470ec5fe3d0a921c1ea577f"
+ },
+ "scheme": {
+  "law": "band = isqrt(key) // S; keys [(b*S)^2, ((b+1)*S)^2)",
+  "S": 25,
+  "bands": 24
+ },
+ "bands": [
+  {
+   "band": 0,
+   "key_min": 0,
+   "key_max": 625,
+   "file": "layers/tiles/copying/0.json",
+   "features": 11,
+   "bytes": 2413,
+   "sha256": "8e51c19e0c21726719facee2cb994cb7f9e8d47776d73a281c009e43344ac4af"
+  },
+  {
+   "band": 1,
+   "key_min": 625,
+   "key_max": 2500,
+   "file": "layers/tiles/copying/1.json",
+   "features": 512,
+   "bytes": 51095,
+   "sha256": "60efd08e90d4dceafa263667c993d0febd0528faba18b3ccb13f01df0878d1f7"
+  },
+  {
+   "band": 2,
+   "key_min": 2500,
+   "key_max": 5625,
+   "file": "layers/tiles/copying/2.json",
+   "features": 342,
+   "bytes": 34585,
+   "sha256": "c7228e4f9f42e5b6f6dbe72d5647cea2734ec8c05ca8d0bb2e144a1ea1306b20"
+  },
+  {
+   "band": 3,
+   "key_min": 5625,
+   "key_max": 10000,
+   "file": "layers/tiles/copying/3.json",
+   "features": 530,
+   "bytes": 52795,
+   "sha256": "f6550a1550513ba0a03a8a9cf8f921089006b5d5c0865607c6ac0f6d2e588e54"
+  },
+  {
+   "band": 4,
+   "key_min": 10000,
+   "key_max": 15625,
+   "file": "layers/tiles/copying/4.json",
+   "features": 919,
+   "bytes": 91468,
+   "sha256": "f6ae985f3c2762eb9e8d7d17f6749846e9c5cab1bc9a9968681ff6b9e034fd81"
+  },
+  {
+   "band": 5,
+   "key_min": 15625,
+   "key_max": 22500,
+   "file": "layers/tiles/copying/5.json",
+   "features": 1515,
+   "bytes": 149912,
+   "sha256": "247c21131b294cf9dbfc280b1a603676cf5decaa842d2893f1bd72766ed66d0c"
+  },
+  {
+   "band": 6,
+   "key_min": 22500,
+   "key_max": 30625,
+   "file": "layers/tiles/copying/6.json",
+   "features": 1199,
+   "bytes": 118941,
+   "sha256": "4804186f9615f510649bddcbdd462f3854728d3b4e5f04378eb3cb834745b71a"
+  },
+  {
+   "band": 7,
+   "key_min": 30625,
+   "key_max": 40000,
+   "file": "layers/tiles/copying/7.json",
+   "features": 2241,
+   "bytes": 221893,
+   "sha256": "ca9553e3f2bd7490eaaaf6825723de1afa22f323efb23b81fe6a68b39d5be71b"
+  },
+  {
+   "band": 8,
+   "key_min": 40000,
+   "key_max": 50625,
+   "file": "layers/tiles/copying/8.json",
+   "features": 3044,
+   "bytes": 301167,
+   "sha256": "dd45239e718bb81e2c7666ff64baa33fe16e2e0c6a215d84520f5c71ee215cbb"
+  },
+  {
+   "band": 9,
+   "key_min": 50625,
+   "key_max": 62500,
+   "file": "layers/tiles/copying/9.json",
+   "features": 1129,
+   "bytes": 112126,
+   "sha256": "6a9e7781a168c10322e7b3aab08784d62d267c95371e5335116afff0e13ad6ac"
+  },
+  {
+   "band": 10,
+   "key_min": 62500,
+   "key_max": 75625,
+   "file": "layers/tiles/copying/10.json",
+   "features": 3792,
+   "bytes": 373823,
+   "sha256": "6622944bf3616df540f4f26c7622a1f8c2b64a9c20eff2dbdc3245500a1d4808"
+  },
+  {
+   "band": 11,
+   "key_min": 75625,
+   "key_max": 90000,
+   "file": "layers/tiles/copying/11.json",
+   "features": 6664,
+   "bytes": 657793,
+   "sha256": "7b59b53284632f8641253d65449c98ab4586694f36b69a87e1503a0f4cc4dbd9"
+  },
+  {
+   "band": 12,
+   "key_min": 90000,
+   "key_max": 105625,
+   "file": "layers/tiles/copying/12.json",
+   "features": 4400,
+   "bytes": 436793,
+   "sha256": "cd81ab5bb60d063eff549ab6c98826ad55b03562c567a4ed5c264daa7d1ccbb3"
+  },
+  {
+   "band": 13,
+   "key_min": 105625,
+   "key_max": 122500,
+   "file": "layers/tiles/copying/13.json",
+   "features": 2467,
+   "bytes": 246104,
+   "sha256": "5079d11a5aaa9bbc8a38c182331399fa57285ee7e7d0518bb7aab6fc07f971b2"
+  },
+  {
+   "band": 14,
+   "key_min": 122500,
+   "key_max": 140625,
+   "file": "layers/tiles/copying/14.json",
+   "features": 2366,
+   "bytes": 235788,
+   "sha256": "ead3fb368f80fbfa8d66ab6095effece78c8479e3185354e2c0a653cd9d7a31b"
+  },
+  {
+   "band": 15,
+   "key_min": 140625,
+   "key_max": 160000,
+   "file": "layers/tiles/copying/15.json",
+   "features": 3574,
+   "bytes": 355500,
+   "sha256": "7c473a68cfacd40a51d3cfb161bfb34c5f5cd142a08a737829fc0c14661ed971"
+  },
+  {
+   "band": 16,
+   "key_min": 160000,
+   "key_max": 180625,
+   "file": "layers/tiles/copying/16.json",
+   "features": 4410,
+   "bytes": 438102,
+   "sha256": "8a9524d122e26b06acdfd6a62f036abb2fb15051ad1b291bd45bca6bccdd0c03"
+  },
+  {
+   "band": 17,
+   "key_min": 180625,
+   "key_max": 202500,
+   "file": "layers/tiles/copying/17.json",
+   "features": 1749,
+   "bytes": 174762,
+   "sha256": "b634faffa69bb77a1fe76eb1b0161860255454014862669153f2cf7854334a23"
+  },
+  {
+   "band": 18,
+   "key_min": 202500,
+   "key_max": 225625,
+   "file": "layers/tiles/copying/18.json",
+   "features": 1,
+   "bytes": 1466,
+   "sha256": "c7492dc90839ad4a78b876d34b38b4e73bf4eb1b44bbbb021412d8841aba95b6"
+  },
+  {
+   "band": 19,
+   "key_min": 225625,
+   "key_max": 250000,
+   "file": "layers/tiles/copying/19.json",
+   "features": 0,
+   "bytes": 1368,
+   "sha256": "e51d587045f1afa45c10d980fc5def97b3cb6962134aebfeb9b90b73d81b0d1c"
+  },
+  {
+   "band": 20,
+   "key_min": 250000,
+   "key_max": 275625,
+   "file": "layers/tiles/copying/20.json",
+   "features": 0,
+   "bytes": 1368,
+   "sha256": "92b8e5241257a5cf64d67ced26372d696002bf229f868084ff1910edab1b9a02"
+  },
+  {
+   "band": 21,
+   "key_min": 275625,
+   "key_max": 302500,
+   "file": "layers/tiles/copying/21.json",
+   "features": 0,
+   "bytes": 1368,
+   "sha256": "71b9b7df61523291d13e81e23c40280b8cee83b2b3f2be12770a22c3e16cd767"
+  },
+  {
+   "band": 22,
+   "key_min": 302500,
+   "key_max": 330625,
+   "file": "layers/tiles/copying/22.json",
+   "features": 0,
+   "bytes": 1368,
+   "sha256": "66d3976b25e84156255e98c29469c99f6f43580ff2fb6c792fb9d422acd1df29"
+  },
+  {
+   "band": 23,
+   "key_min": 330625,
+   "key_max": 360000,
+   "file": "layers/tiles/copying/23.json",
+   "features": 421,
+   "bytes": 43224,
+   "sha256": "6396cc8c2407b254eb9e006130e92d76f09b91765d7696815ba918a59019cfe0"
+  }
+ ]
+}

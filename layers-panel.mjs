@@ -83,17 +83,80 @@ function renderPanel() {
 async function toggle(l, on) {
   const s = state.get(l.id) || { status: 'WAIT' };
   s.on = on; state.set(l.id, s);
-  if (on && !s.doc) {
+  writeLayersToURL();
+  if (on && !s.doc && !s.loading) {
+    s.loading = true; s.why = '';
     s.status = 'LOAD'; renderPanel();
     try {
-      const r = await fetch(l.file, { cache: 'default' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      s.doc = await r.json();
+      if (l.tiles) s.doc = await hydrateTiles(l, s);
+      else {
+        const r = await fetch(l.file, { cache: 'default' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        s.doc = await r.json();
+      }
       s.status = s.doc.features.length ? 'OK' : 'EMPTY';
       if (!s.doc.features.length) s.why = 'loaded; the layer holds no features';
     } catch (e) { s.status = 'FAIL'; s.why = e.message; }
+    s.loading = false;
   }
   renderPanel(); drawOverlay();
+}
+
+/* A tiled layer is split by radius band (build/tile_layer.py): because r = sqrt(key),
+   band b is the key range [(b*S)^2, ((b+1)*S)^2). For now every band is fetched up
+   front, but as separate requests, so the panel can count them in (LOAD n/N) and a
+   later version can fetch only the bands in view. The assembled doc is identical in
+   shape to the whole-file layer, so drawing does not know the difference. */
+async function hydrateTiles(l, s) {
+  const r = await fetch(l.tiles, { cache: 'default' });
+  if (!r.ok) throw new Error('tile index HTTP ' + r.status);
+  const index = await r.json();
+  const bands = index.bands || [];
+  const N = bands.length;
+  let n = 0;
+  s.status = `LOAD ${n}/${N}`; renderPanel();
+  const parts = await Promise.all(bands.map(async b => {
+    const t = await fetch(b.file, { cache: 'default' });
+    if (!t.ok) throw new Error(`band ${b.band} HTTP ${t.status}`);
+    const doc = await t.json();
+    if (doc.features.length !== b.features)
+      throw new Error(`band ${b.band} holds ${doc.features.length} features, index says ${b.features}`);
+    n++; s.status = `LOAD ${n}/${N}`; renderPanel();
+    return doc.features;
+  }));
+  const features = parts.flat();
+  if (index.source && features.length !== index.source.features)
+    throw new Error(`tiles hold ${features.length} features, source had ${index.source.features}`);
+  return {
+    type: 'CodeFeatureCollection', substrate: index.substrate, layer: index.layer,
+    provenance: index.provenance, stats: { features: features.length, bands: N }, features,
+  };
+}
+
+/* ── the URL: ?layers=engine,declared ─────────────────────────────────────── */
+
+/* The wafer's URL grammar: only permanent identifiers travel. A layer id is used
+   only if the manifest names it; anything else in the URL is dropped, and the
+   next write puts the URL back into canonical, manifest-ordered form. */
+function writeLayersToURL() {
+  if (!manifest) return;
+  const on = manifest.layers.filter(l => state.get(l.id)?.on).map(l => l.id);
+  const u = new URL(location.href);
+  if (on.length) u.searchParams.set('layers', on.join(','));
+  else u.searchParams.delete('layers');
+  const next = u.pathname + u.search.replace(/%2C/gi, ',') + u.hash;
+  if (next !== location.pathname + location.search + location.hash)
+    history.replaceState(history.state, '', next);
+}
+
+function readLayersFromURL() {
+  if (!manifest) return;
+  const raw = new URL(location.href).searchParams.get('layers') || '';
+  const known = new Map(manifest.layers.map(l => [l.id, l]));
+  const wanted = [...new Set(raw.split(',').map(x => x.trim()))].filter(id => known.has(id));
+  for (const id of wanted) state.get(id).on = true;     /* mark all first, so each write keeps the rest */
+  if (raw) writeLayersToURL();
+  for (const id of wanted) toggle(known.get(id), true);
 }
 
 /* ── drawing: follow the wafer's frame ───────────────────────────────────── */
@@ -143,6 +206,7 @@ window.addEventListener('resize', drawOverlay);
     manifest = await r.json();
     for (const l of manifest.layers) state.set(l.id, { status: 'WAIT', on: false });
     renderPanel();
+    readLayersFromURL();
   } catch (e) {
     $('layersBody').innerHTML = `<div class="lnote">Layers unavailable: ${esc(e.message)}. The wafer itself is unaffected.</div>`;
   }

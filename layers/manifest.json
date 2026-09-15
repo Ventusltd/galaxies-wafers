@@ -13,7 +13,8 @@
    "file": "layers/copying.json",
    "bytes": 4073845,
    "features": 41286,
-   "sha256": "3ef484f075b6392d43a970e8446ab7877e8b43d90470ec5fe3d0a921c1ea577f"
+   "sha256": "3ef484f075b6392d43a970e8446ab7877e8b43d90470ec5fe3d0a921c1ea577f",
+   "tiles": "layers/tiles/copying/index.json"
   },
   {
    "id": "crossname",
