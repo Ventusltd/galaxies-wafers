@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>The Placement Law</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="law.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>THE PLACEMENT LAW</h1>
+    <p class="dim">Every galaxy page stands on one frozen substrate. A permanent key is a point, and its place is a pure function of the key alone. This page takes the law apart with the page's own import of <code>lib.mjs</code>, and measures each claim while you watch.</p>
+    <div class="law" aria-label="the law">
+      <div><span class="dim">r</span> = <span id="law-sp">—</span> · √key</div>
+      <div><span class="dim">θ</span> = key · <span id="law-g">—</span> rad</div>
+      <div class="dim small">x = r cos θ · y = r sin θ · constants read from lib.mjs <code>SPACING</code> and <code>GOLDEN</code> at run time</div>
+    </div>
+  </header>
+
+  <div class="bar" id="bar">
+    <label for="nrange" class="small">N <span class="dim">(scenario input: keys 1…N)</span></label>
+    <div class="nrow">
+      <input id="nrange" type="range" min="0" max="1000" step="1" aria-label="N, the number of keys drawn">
+      <input id="nnum" type="text" inputmode="numeric" autocomplete="off" aria-label="N exactly">
+    </div>
+    <p id="nmsg" class="small dim" aria-live="polite"></p>
+  </div>
+
+  <details id="s1" class="sec">
+    <summary><span>1 · Why √key: equal area holds equal count</span><span id="st-s1" class="st">WAIT</span></summary>
+    <p class="small">The keys inside radius r are the keys with SPACING·√key ≤ r, so their number grows as r². Cut the disc into rings of equal area and each ring should hold the same count: density on screen is density in the numbering. Below, every point is placed with <code>placeAll()</code> and assigned to a ring by its measured radius <code>hypot(x, y)</code>, then counted.</p>
+    <label class="small">rings <select id="rings"><option>4</option><option selected>8</option><option>12</option><option>16</option></select></label>
+    <div class="plane"><canvas id="c1" aria-label="Keys 1 to N on the wafer with equal-area ring boundaries"></canvas><div id="c1lab" class="drawn dim"></div></div>
+    <p class="legend small dim"><span class="sw sw-int"></span>integer 1…N (issued or not) · <span class="sw sw-iss"></span>issued key from the numbered database · rings drawn at r = R·√(i/m)</p>
+    <div class="tw"><table id="t1"><thead><tr><th>ring</th><th>r from–to</th><th>area</th><th>integers √key</th><th>integers if r ∝ key</th><th>issued keys</th></tr></thead><tbody></tbody></table></div>
+    <p id="s1sum" class="small"></p>
+  </details>
+
+  <details id="s2" class="sec" open>
+    <summary><span>2 · Why the golden angle</span><span class="st">computed</span></summary>
+    <p id="gold" class="small"></p>
+    <p class="small">The fraction of a turn that separates consecutive keys decides whether keys line up. If the fraction is a rational p/q, key k and key k+q point the same way and the disc becomes q straight spokes. If it is irrational, no two keys ever share a ray, but a fraction close to a rational p/q still builds near-spokes once N is large. How close an irrational comes to rationals is read from its continued fraction: large terms mean a very good rational approximation. The golden fraction's terms are all ones after the first, the smallest possible, so it stays away from every rational as far as any number can.</p>
+    <div class="pick">
+      <label class="small">compare A <select id="angA"></select></label>
+      <label class="small">compare B <select id="angB"></select></label>
+    </div>
+    <div class="panels">
+      <figure class="panel"><figcaption id="capG">golden</figcaption><div class="plane sq"><canvas id="cG"></canvas></div><dl id="mG" class="metrics"></dl></figure>
+      <figure class="panel"><figcaption id="capA">A</figcaption><div class="plane sq"><canvas id="cA"></canvas></div><dl id="mA" class="metrics"></dl></figure>
+      <figure class="panel"><figcaption id="capB">B</figcaption><div class="plane sq"><canvas id="cB"></canvas></div><dl id="mB" class="metrics"></dl></figure>
+    </div>
+    <p class="small dim">How arms are measured: for every key in the outer half (key &gt; N/2) its nearest neighbour is found through a grid bucket (cells of side SPACING, searched ring by ring, never all pairs). The most common key difference d between a key and its nearest neighbour is the number of arms: keys k, k+d, k+2d… lie on one arm. Each step along an arm turns it by the signed fractional part of d·(angle/2π) of a turn; over the disc an arm takes about N/d steps. The arms are called <b>straight spokes</b> when that total turn is less than half the gap between neighbouring arms (180°/d), and <b>spiral arms</b> otherwise.</p>
+  </details>
+
+  <details id="s3" class="sec">
+    <summary><span>3 · Why a key's place never changes</span><span class="st">computed</span></summary>
+    <p class="small">Place is a function of the key and nothing else, so adding keys cannot move an existing one. Take a snapshot, move N (up to the full numbering), and compare. "Before" coordinates are read out of <code>placeAll()</code> over keys 1…N<sub>before</sub>; "after" out of <code>placeAll()</code> over 1…N<sub>after</sub>, the Float32 values the GPU receives. A key beyond N<sub>before</sub> already had its place: <code>place()</code> is defined for every positive integer.</p>
+    <div class="keys3">
+      <input id="k1" type="text" inputmode="numeric" aria-label="first key" value="7">
+      <input id="k2" type="text" inputmode="numeric" aria-label="second key" value="1597">
+      <input id="k3" type="text" inputmode="numeric" aria-label="third key" value="1999">
+      <button type="button" id="snap">snapshot N</button>
+    </div>
+    <p class="small dim">keys are scenario inputs; edit them</p>
+    <div class="tw"><table id="t3"><thead><tr><th>key</th><th>before</th><th>after</th><th>same bits</th><th>if r = √(key/N)</th></tr></thead><tbody></tbody></table></div>
+    <p id="s3sum" class="small"></p>
+    <div class="plane"><canvas id="c3" aria-label="Keys before the snapshot, keys added after it, and the three chosen keys ringed"></canvas><div id="c3lab" class="drawn dim"></div></div>
+    <p class="legend small dim"><span class="sw sw-int"></span>keys up to N<sub>before</sub> · <span class="sw sw-add"></span>keys added after the snapshot · <span class="sw sw-ring"></span>the three chosen keys</p>
+  </details>
+
+  <details id="s4" class="sec">
+    <summary><span>4 · Why gaps</span><span id="st-s4" class="st">WAIT</span></summary>
+    <p class="small">Every integer has a place; only issued keys are points. A number the estate never issued is left as a hole, because on a frozen substrate a hole is as much a fact as a point. The counts below are taken from the numbered database itself.</p>
+    <p id="s4sum" class="summary">WAIT — the key list loads when this section or section 1 is opened.</p>
+    <div class="plane bandsplane"><canvas id="c4b" aria-label="Share of integers issued in each band of the numbering"></canvas></div>
+    <p class="small dim" id="c4blab"></p>
+    <div class="plane"><canvas id="c4" aria-label="Integers 1 to N: issued keys lit, never-issued numbers as dark holes"></canvas><div id="c4lab" class="drawn dim"></div></div>
+    <p class="legend small dim"><span class="sw sw-iss"></span>issued · <span class="sw sw-hole"></span>place of a number never issued</p>
+  </details>
+
+  <details id="questions" class="questions">
+    <summary>Questions</summary>
+    <dl>
+      <dt>1. How does this help draw a system or a single-line diagram?</dt>
+      <dd>It draws no busbar, feeder, transformer, cable route, protection or earthing: element <b>none</b>. It is the addressing substrate every drawing on the wafer uses. <code>place(key)</code> in <code>lib.mjs</code> turns the permanent key (the field read from <code>all-lines.bin</code>) into x, y. Because that address never moves, a code card, a layer (whose geometry holds keys, never coordinates) and a deep link <code>?line=</code> land on the same point and agree about which line they mean.</dd>
+      <dt>2. What is this code used for?</dt>
+      <dd><code>place</code>, <code>placeAll</code>, <code>GOLDEN</code>, <code>SPACING</code> in <code>lib.mjs</code> (last changed at commit <span class="pin">0a7e2a9872d3</span>), frozen as <code>wafer.mjs</code> (<code>SUBSTRATE.id</code> <span class="pin" id="q-sub">—</span>). Files that import <code>place</code>, listed from the repository source at commit <span class="pin">8b4611b9b5c4</span> and re-checked now by fetching each file and reading its import line:
+        <p id="q-imp-sum" class="small">WAIT — opening this panel fetches the files (three at a time).</p>
+        <ul id="q-imp" class="qrows"></ul></dd>
+      <dt>3. Where does it lead next?</dt>
+      <dd>To the layers drawn over these places by <code>layers-panel.mjs</code> (<code>layers/manifest.json</code>), and to the code card that opens a key: <a class="btn" id="q-code" href="../31-code-card-everywhere/?line=1597">CODE</a> <a class="btn" id="q-wafer" href="../../?line=1597">WAFER</a> for the second key of section 3. No electrical element is reached from here.</dd>
+    </dl>
+  </details>
+  <p id="machine" class="machine small">Machine detail · —</p>
+
+  <footer class="dim small">
+    <p id="loadingrule">Loading, as Grid Atlas does it: sections 2 and 3 need nothing but <code>lib.mjs</code>. The key list (one file of the numbered database, with its meta) is fetched only when section 1 or 4 is opened, once, through a queue of at most 3 concurrent requests with a 15 s timeout; a failed fetch can be retried by closing and reopening. Drawing is bounded by N: at most N points per canvas, splatted into one image buffer, never one DOM node per key.</p>
+    <p id="prov"></p>
+    <p><a href="../">every version</a> · <a href="../../">the wafer</a></p>
+  </footer>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
