@@ -12,7 +12,7 @@
 <main>
   <header>
     <h1>TWO HAZARDS ON ONE MAP</h1>
-    <div class="dim">Two ways distance code in this estate can return a plausible number that is not the number intended: which Earth radius it stands on, and which order it takes latitude and longitude in. Every distance below is returned at run time by published engine modules called in this page; the page only scales and draws what they return.</div>
+    <div class="dim">Two ways distance code in this estate can return a plausible number that is not the number intended: which Earth radius it stands on, and which order it takes latitude and longitude in. Every distance, bearing and arc point below is returned at run time by published engine modules called in this page. The comparisons between them (differences, parts per million and ratios) are computed by the page from those returned values.</div>
     <div id="mods" class="mods" aria-live="polite"></div>
   </header>
 
@@ -76,7 +76,7 @@
       <p id="machine" class="machine small"></p>
 
       <footer class="dim small">
-        Modules imported from ventus-grid-engine at commit <span class="pin"></span>: engine/geo-core.js, engine/v9-geodesy.js and engine/corridor-estimate.js. Radius names and values, distances, bearings and arc points are all returned by those modules; the page adds only the map projection (plain equirectangular) and the magnification of the radii drawing, both stated where drawn.
+        Modules imported from ventus-grid-engine at commit <span class="pin"></span>: engine/geo-core.js, engine/v9-geodesy.js and engine/corridor-estimate.js. Radius names and values, distances, bearings and arc points are returned by those modules. The page adds the map projection (plain equirectangular), the magnification of the radii drawing, and the differences, parts per million and ratios between returned values.
         <a href="../">every version</a>
       </footer>
     </section>

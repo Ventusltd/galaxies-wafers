@@ -429,7 +429,7 @@ function paintQuestions(m) {
   items.push([
     'How does this help draw a system or a single-line diagram?',
     'It feeds the cable route: the straight-line km between two ends of a circuit. engine/corridor-estimate.js says its caller “is expected to have produced that km via v9-geodesy.js distanceKm or geo-core.js haversine” (lines 17–19) and forCable(km) multiplies it by CABLE_FACTOR' + (ce ? ` (${ce.CABLE_FACTOR}, read from the module)` : '') + ' into a corridor length. It also ranks substations (busbars): engine/v9-nearest-search.js imports distanceKm (line 35) for nearest(), “measured on the estate’s single radius”.',
-    live ? `Live, A to B: forCable(documented) = ${corridorText(m.corridor.documented)}; forCable(swapped) = ${corridorText(m.corridor.swapped)}. Scenario leg: forCable on R_MEAN = ${corridorText(m.corridor.legMean)}, on R_ATLAS = ${corridorText(m.corridor.legAtlas)}, on R_UK = ${corridorText(m.corridor.legUK)}. A wrong radius or a swapped call moves the drawn route length by the same ratio as the distance.`
+    live ? `Live, A to B: forCable(documented) = ${corridorText(m.corridor.documented)}; forCable(swapped) = ${corridorText(m.corridor.swapped)}. Scenario leg: forCable on R_MEAN = ${corridorText(m.corridor.legMean)}, on R_ATLAS = ${corridorText(m.corridor.legAtlas)}, on R_UK = ${corridorText(m.corridor.legUK)}. When both corridor estimates are offered, a wrong radius or a swapped call moves the corridor length by the same ratio as the distance; the module withholds an estimate below 1 km.`
       : (m.ok ? 'Live corridor lengths EMPTY: engine/corridor-estimate.js has not loaded.' : 'Live corridor lengths EMPTY: ' + emptyReason())
   ]);
   items.push([
