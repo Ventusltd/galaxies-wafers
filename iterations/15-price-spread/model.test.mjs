@@ -1,0 +1,14 @@
+import test from'node:test';import assert from'node:assert/strict';import{createHash}from'node:crypto';import{readFile}from'node:fs/promises';import{SOURCE,URL,parse,calculate}from'./model.mjs';
+const bytes=process.env.ENGINE_FILE?await readFile(process.env.ENGINE_FILE):await(async()=>{const r=await fetch(URL,{signal:AbortSignal.timeout(15000)});assert.equal(r.status,200);return Buffer.from(await r.arrayBuffer());})();assert.equal(createHash('sha256').update(bytes).digest('hex'),SOURCE.sha256);const engine=await import(`data:text/javascript;base64,${bytes.toString('base64')}`);
+const base={capacityGw:1,hours:1,utilisation:1,gbPriceGbpPerMwh:90,neighbourPriceGbpPerMwh:60};const run=patch=>calculate(engine,{...base,...patch});
+test('oneGWh at30GBP perMWh yields30000grossGBP',()=>{const r=run({});assert.equal(r.energy.value,1);assert.equal(r.energy.unit,'GWh');assert.equal(r.rent.value,30000);assert.equal(r.rent.unit,'GBP');assert.equal(r.direction.direction,'import to GB');});
+test('swapping prices reverses incentive, not absolute spread',()=>{const r=run({gbPriceGbpPerMwh:60,neighbourPriceGbpPerMwh:90});assert.equal(r.direction.direction,'export from GB');assert.equal(r.direction.signedSpreadGbpPerMwh,-30);assert.equal(r.rent.value,30000);});
+test('equal prices preserve partial result and exact zero-spread refusal',()=>{const r=run({gbPriceGbpPerMwh:60});assert.equal(r.direction.direction,'no commercial incentive');assert.equal(r.energy.value,1);assert.equal(r.rent,null);assert.deepEqual(r.series,[]);assert.match(r.refusal.message,/greater than zero/);});
+test('negative stated prices are valid source inputs',()=>assert.equal(run({gbPriceGbpPerMwh:-15,neighbourPriceGbpPerMwh:40}).direction.signedSpreadGbpPerMwh,-55));
+test('ten source-computed sensitivity values',()=>{const r=run({utilisation:.5});assert.equal(r.rent.value,15000);assert.equal(r.series.length,10);assert.equal(r.series[0].grossGbp,3000);assert.equal(r.series.at(-1).grossGbp,30000);});
+test('zero capacity, hours and utilisation refused',()=>{for(const field of['capacityGw','hours','utilisation'])assert.throws(()=>run({[field]:0}),/greater than zero/);});
+test('percentage-as-fraction refused',()=>assert.throws(()=>run({utilisation:70}),/fraction/));
+test('blank remains missing',()=>{assert.equal(parse(' '),undefined);assert.throws(()=>run({hours:parse('')}),/finite number/);});
+test('explicit interface bounds',()=>{assert.throws(()=>run({capacityGw:101}),/Interface policy/);assert.throws(()=>run({gbPriceGbpPerMwh:10001}),/Interface policy/);});
+test('underflow removed instead of drawingNaNchart',()=>assert.throws(()=>run({capacityGw:Number.MIN_VALUE,hours:Number.MIN_VALUE}),/underflowed/));
+test('result is finite serializable with exclusions',()=>{const r=run({});assert.deepEqual(JSON.parse(JSON.stringify(r)),r);assert.ok(r.notComputed.includes('profit'));assert.equal(r.source.sha256,SOURCE.sha256);});

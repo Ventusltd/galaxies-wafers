@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 30,
+ "count": 32,
  "iterations": [
   {
    "n": 1,
@@ -154,6 +154,38 @@
     "sha": "bbf659c9ee43146f625ca38b776da7aab168a8e6",
     "author": "Codex",
     "copied_by": "Opus review: private scan clean; only external imports are the pinned ventus-grid-engine modules via jsDelivr; Codex hosted CI 35012936975 passed four hop cases in Chromium and WebKit at phone and desktop size"
+   }
+  },
+  {
+   "n": 15,
+   "dir": "15-price-spread",
+   "slug": "price-spread",
+   "title": "Price is not profit · Spread lab",
+   "commit": "",
+   "committed": "",
+   "subject": "",
+   "source": {
+    "repo": "Ventusltd/testcode",
+    "path": "sandbox/202609151924-galaxy-spread/",
+    "sha": "0875f88eece880a72e69bb7283247b7fe8d07b8a",
+    "author": "Codex",
+    "copied_by": "Opus review: private scan clean; only external imports are the pinned ventus-grid-engine modules via jsDelivr; Codex hosted CI 35014400493 passed 20 browser cases across 5 labs in Chromium and WebKit"
+   }
+  },
+  {
+   "n": 16,
+   "dir": "16-firm-capacity",
+   "slug": "firm-capacity",
+   "title": "Remove the largest stated unit · Firm arithmetic",
+   "commit": "",
+   "committed": "",
+   "subject": "",
+   "source": {
+    "repo": "Ventusltd/testcode",
+    "path": "sandbox/202609151930-galaxy-firm/",
+    "sha": "0875f88eece880a72e69bb7283247b7fe8d07b8a",
+    "author": "Codex",
+    "copied_by": "Opus review: private scan clean; only external imports are the pinned ventus-grid-engine modules via jsDelivr; Codex hosted CI 35014400493 passed 20 browser cases across 5 labs in Chromium and WebKit"
    }
   },
   {
