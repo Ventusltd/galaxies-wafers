@@ -1,0 +1,51 @@
+# Twenty GitHub-hosted browser jobs against the served Pages site: the ten
+# iterations, each at phone and desktop size. Runs after every Pages build and on
+# demand. Read-only token, pinned actions, no secrets, ten-minute cap per job.
+name: browser-matrix
+on:
+  page_build:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: browser-matrix
+  cancel-in-progress: true
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        page:
+          - iterations/01-route-alpha/
+          - iterations/02-tunnels/
+          - iterations/03-code-particle/
+          - iterations/04-400kv-engine/
+          - iterations/05-periodic-table/
+          - iterations/06-stars-as-engines/?layers=crossname,grid-engine-shell,spider,module-Gg
+          - iterations/07-code-card/?layers=grid-engine-shell,learned,module-Ga
+          - iterations/08-space-and-time/?t=342795&layers=module-Ga,module-Vn
+          - iterations/09-deeplink-receiver/?layers=module-Ps,module-Gn,module-x126
+          - iterations/10-ground-bridge/
+        size: [phone, desktop]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+      - name: install puppeteer
+        run: npm i --no-save --no-audit --no-fund puppeteer@23.11.1
+      - name: smoke
+        env:
+          PAGE: ${{ matrix.page }}
+          SIZE: ${{ matrix.size }}
+          BASE: https://ventusltd.github.io/galaxies-wafers/
+        run: node proof/browser/smoke.mjs
+      - name: receipt
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: smoke-${{ strategy.job-index }}-${{ matrix.size }}
+          path: smoke-result.json
+          retention-days: 14
