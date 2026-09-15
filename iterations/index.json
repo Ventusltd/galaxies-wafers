@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 22,
+ "count": 23,
  "iterations": [
   {
    "n": 1,
@@ -165,27 +165,27 @@
    "dir": "27-earth-radii-and-argument-order",
    "slug": "earth-radii-and-argument-order",
    "title": "Two Hazards on One Map — Earth radii and argument order in distance code",
-   "commit": "7c9e1c41e7bad862bb29cede7f0d98df9efe1e44",
-   "committed": "2026-09-15T19:54:24+01:00",
-   "subject": "iteration 27 Two Hazards on One Map: Earth radii and argument order in distance code"
+   "commit": "db9e680ae8828dd984f0dfa69d5604359eaa3531",
+   "committed": "2026-09-15T20:13:08+01:00",
+   "subject": "27, 28, 29: narrow four claims to what the pages actually do (Codex numerical review)"
   },
   {
    "n": 28,
    "dir": "28-nearest-search-trap",
    "slug": "nearest-search-trap",
    "title": "The Nearest-Search Trap — a gate made visible",
-   "commit": "0045db855f071f57314c511192c1b671b08c0aeb",
-   "committed": "2026-09-15T19:53:15+01:00",
-   "subject": "iteration 28 the nearest-search trap: the proof's degree-box trap made visible, gate seen to hold and to fail"
+   "commit": "db9e680ae8828dd984f0dfa69d5604359eaa3531",
+   "committed": "2026-09-15T20:13:08+01:00",
+   "subject": "27, 28, 29: narrow four claims to what the pages actually do (Codex numerical review)"
   },
   {
    "n": 29,
    "dir": "29-rating-envelope",
    "slug": "rating-envelope",
    "title": "Ratings That Do Not Add",
-   "commit": "bdffefe2393eb817409702300c8e61bceeaa8378",
-   "committed": "2026-09-15T19:54:04+01:00",
-   "subject": "iteration 29 ratings that do not add: per-circuit ratings, a corridor, and the module's refusal to sum"
+   "commit": "db9e680ae8828dd984f0dfa69d5604359eaa3531",
+   "committed": "2026-09-15T20:13:08+01:00",
+   "subject": "27, 28, 29: narrow four claims to what the pages actually do (Codex numerical review)"
   },
   {
    "n": 31,
@@ -195,6 +195,15 @@
    "commit": "6aec5dd4f3f3dba0909ddd9648a874761fe2977e",
    "committed": "2026-09-15T20:05:47+01:00",
    "subject": "iteration 31 code card everywhere: any tap opens a code card; change a digit locally and run the engine module"
+  },
+  {
+   "n": 32,
+   "dir": "32-spider-and-galaxy",
+   "slug": "spider-and-galaxy",
+   "title": "Spider and Galaxy — one universe, two views",
+   "commit": "7bbce7a4bc37aa5d1f7e3d2ea4b930264b1c1e23",
+   "committed": "2026-09-15T20:13:15+01:00",
+   "subject": "iteration 32 spider and galaxy: one universe, two views"
   },
   {
    "n": 33,
