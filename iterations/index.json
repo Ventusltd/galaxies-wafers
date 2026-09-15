@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 26,
+ "count": 27,
  "iterations": [
   {
    "n": 1,
@@ -145,9 +145,9 @@
    "dir": "14-electrical-hops",
    "slug": "electrical-hops",
    "title": "Count the hops · Topology lab",
-   "commit": "",
-   "committed": "",
-   "subject": "",
+   "commit": "e278cb59fbad5d3e87b1849dfb85973bd4a472c5",
+   "committed": "2026-09-15T20:24:00+01:00",
+   "subject": "iteration 14 electrical hops (Codex), copied from testcode bbf659c after review",
    "source": {
     "repo": "Ventusltd/testcode",
     "path": "sandbox/202609151914-galaxy-hops/",
@@ -263,6 +263,15 @@
    "commit": "5d4d7cdb3f1dd28c230cddfd6a66c2c2d0142763",
    "committed": "2026-09-15T20:07:52+01:00",
    "subject": "iteration 34 Logical Floorplan: engine/voltage-drop.js walked through a textbook five-stage pipeline"
+  },
+  {
+   "n": 37,
+   "dir": "37-hidden-wires",
+   "slug": "hidden-wires",
+   "title": "Hidden Wires",
+   "commit": "8a466202a7861db3a0cd27e67207b0bf18890c5b",
+   "committed": "2026-09-15T20:25:25+01:00",
+   "subject": "iteration 37 hidden wires: undeclared needs found by unplugging, drawn from star-maker's own failures"
   }
  ]
 }
