@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
+import {SOURCE,MODULE_URL,numberInput,calculate} from './model.mjs';
+// The engine remains external. Only the reviewed, hash-matching source may execute.
+const bytes=process.env.ENGINE_FILE?await readFile(process.env.ENGINE_FILE):await(async()=>{const response=await fetch(MODULE_URL,{signal:AbortSignal.timeout(15000)});assert.equal(response.status,200);return Buffer.from(await response.arrayBuffer());})();
+assert.equal(createHash('sha256').update(bytes).digest('hex'),SOURCE.sha256);
+const engine=await import(`data:text/javascript;base64,${bytes.toString('base64')}`);
+const base={unitCount:100,perUnitKw:7,coincidenceFactor:0.3};
+test('explicit assumption yields aggregate210kW,700kW unrestricted',()=>{const r=calculate(engine,'assumed',base);assert.equal(r.value,210);assert.equal(r.groupKw,210);assert.equal(r.from.unrestrictedKw,700);assert.equal(r.unit,'kW');assert.equal(r.source.commit,SOURCE.commit);});
+test('supplied210kW implies0.3, not a verified measurement',()=>{const r=calculate(engine,'implied',{unitCount:100,perUnitKw:7,measuredGroupPeakKw:210});assert.equal(r.value,0.3);assert.equal(r.groupKw,210);assert.equal(r.unit,'dimensionless');assert.match(r.assumption,/not verified/);});
+test('unity reaches unrestricted total',()=>assert.equal(calculate(engine,'assumed',{...base,coincidenceFactor:1}).value,700));
+test('blank stays missing and engine supplies refusal, no factor default',()=>{assert.equal(numberInput('  '),undefined);assert.throws(()=>calculate(engine,'assumed',{...base,coincidenceFactor:undefined}),/coincidenceFactor must be a finite number/);});
+test('zero and percentage-as-fraction are refused by source',()=>{for(const value of[0,-0.1,20])assert.throws(()=>calculate(engine,'assumed',{...base,coincidenceFactor:value}),RangeError);});
+test('fractional count and nonfinite inputs refused',()=>{assert.throws(()=>calculate(engine,'assumed',{...base,unitCount:1.5}),/whole number/);assert.throws(()=>calculate(engine,'assumed',{...base,coincidenceFactor:NaN}),TypeError);assert.throws(()=>calculate(engine,'assumed',{...base,perUnitKw:0}),/greater than zero/);});
+test('peak above total refused',()=>assert.throws(()=>calculate(engine,'implied',{unitCount:100,perUnitKw:7,measuredGroupPeakKw:701}),/exceeds the unrestricted total/));
+test('interface bounds are identified as policy',()=>{assert.throws(()=>calculate(engine,'assumed',{...base,unitCount:10000001}),/Interface policy/);assert.throws(()=>calculate(engine,'assumed',{...base,perUnitKw:1001}),/Interface policy/);});
+test('direction validated',()=>assert.throws(()=>calculate(engine,'other',base),/Unknown calculation direction/));
+test('finite output guard does not trust arbitrary injected result',()=>{assert.throws(()=>calculate({diversifiedDemandKw:()=>({value:Infinity,from:{unrestrictedKw:700,coincidenceFactor:0.3}})},'assumed',base),/nonfinite result/);});
+test('record is finite serializable and names what remains unestablished',()=>{const r=calculate(engine,'assumed',base);assert.deepEqual(JSON.parse(JSON.stringify(r)),r);assert.ok(r.notEstablished.includes('firm capacity'));assert.equal(Object.keys(engine.NOT_COMPUTED).length,4);});

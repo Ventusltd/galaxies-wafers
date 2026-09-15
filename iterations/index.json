@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 23,
+ "count": 24,
  "iterations": [
   {
    "n": 1,
@@ -122,6 +122,22 @@
     "sha": "d2add56f32b4759bd52128a9d55ed409c3f5a5a7",
     "author": "Codex",
     "copied_by": "Opus review: private scan clean, no external fetches, wafer.mjs same git blob as the galaxy root; Codex hosted CI 35011273409 passed in Chromium and WebKit at phone and desktop size"
+   }
+  },
+  {
+   "n": 13,
+   "dir": "13-diversified-demand",
+   "slug": "diversified-demand",
+   "title": "One group, one assumption · Demand lab",
+   "commit": "",
+   "committed": "",
+   "subject": "",
+   "source": {
+    "repo": "Ventusltd/testcode",
+    "path": "sandbox/202609151910-galaxy-demand/",
+    "sha": "1eac47b4f58976038549e439a84eebe3e52c94ac",
+    "author": "Codex",
+    "copied_by": "Opus review: private scan clean; only external import is the pinned ventus-grid-engine module via jsDelivr; Codex hosted CI 35012121288 passed in Chromium and WebKit at phone and desktop size"
    }
   },
   {
