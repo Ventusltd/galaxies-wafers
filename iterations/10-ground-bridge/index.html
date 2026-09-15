@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>The Ground Bridge — the wafer and the ground, one tap apart</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css">
+<style>
+  :root{--ink:#d8dee9;--dim:#8b93a7;--ground:#0b0d12;--edge:#1b2030;--beam:#5ec8f2;--lit:#ffd54a}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;overflow:hidden}
+  #panes{display:grid;grid-template-columns:1fr 14rem 1fr;height:100%}
+  #wafer{border:0;width:100%;height:100%;display:block;background:var(--ground)}
+  #strip{border-left:1px solid var(--edge);border-right:1px solid var(--edge);padding:.7rem .6rem;overflow:auto;
+         display:flex;flex-direction:column;gap:.6rem}
+  #strip h1{font-size:11px;letter-spacing:.14em;font-weight:400;margin:0}
+  #counts{color:var(--ink)} .dim{color:var(--dim)} #said{color:var(--lit);overflow-wrap:anywhere}
+  #said .sym{color:var(--beam);font-weight:700}
+  #map{width:100%;height:100%}
+  .maplibregl-ctrl-attrib{font:10px ui-monospace,monospace;background:#0b0d12cc!important;color:var(--dim)}
+  .maplibregl-ctrl-attrib a{color:var(--beam)}
+  @media (max-width:760px){
+    body{overflow:auto} #panes{grid-template-columns:1fr;grid-template-rows:60vh auto 60vh;height:auto}
+    #strip{border:0;border-top:1px solid var(--edge);border-bottom:1px solid var(--edge)}
+  }
+</style>
+</head>
+<body>
+<div id="panes">
+  <iframe id="wafer" src="wafer.html" title="The Line Wafer: every numbered line of the estate"></iframe>
+  <aside id="strip">
+    <h1>THE GROUND BRIDGE</h1>
+    <div id="counts" class="dim">counting…</div>
+    <div id="said" aria-live="polite"></div>
+    <div class="dim">Tap a substation or a project on the map: the wafer lights the routes of the modules that draw it. Tap a lit route on the wafer: the map flies to the substation nearest its centre and names the module.</div>
+    <div class="dim">map layers lifted from Grid Atlas v9 (release 202608300453) · projects from the Atlas pack (testcode 202609151428) · basemap CARTO dark matter · © OpenStreetMap contributors</div>
+  </aside>
+  <div id="map"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script>
+const RELEASE = 'https://ventusltd.github.io/gridatlas/atlas/releases/202608300453-atlas-v9/';
+const PACK = 'https://globalgrid2050.com/testcode/202609151428/data/';
+
+/* Lifted verbatim from atlas/index.html (the Atlas v9 `ukConfig`). */
+const L132 = { id: "132",  label: "132kV", color: "#00cc00", type: "line", width: 1.5, url: "data/grid_132kv.geojson" };
+const SUBS = { id: "subs", label: "Subs",  color: "#ffffff", type: "point", radius: ['interpolate', ['linear'], ['zoom'], 5, 3, 10, 5, 14, 10, 18, 22], url: "data/grid_substations.geojson" };
+/* The Atlas's REPD capacity breakpoints: ventus-corev8engine.js, the default circlePaint. */
+const CAPACITY_RADIUS = ['interpolate',['linear'],['coalesce',['get','capacity'],0],0,8,10,10,50,13,200,17,500,22,1000,28];
+
+/* Which estate modules draw which kind of thing on the ground. */
+const DRAWN_BY = { substation: ['module-Vn', 'module-Si'], project: ['module-Ra', 'module-Si'] };
+
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString('en-GB');
+const G = { subs: null, projects: 0, names: null, tech: null };
+const waferWin = () => $('wafer').contentWindow;
+const layers = () => waferWin()?.__layers ?? null;
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  center: [-2.5, 54.3], zoom: 5.2, attributionControl: true
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+function counts() {
+  const L = layers();
+  const routes = L ? L.ids().filter(id => id.startsWith('module-')).length : null;
+  $('counts').textContent =
+    `${G.subs ? fmt(G.subs.length) : '…'} substations, ${G.projects ? fmt(G.projects) : '…'} projects, ` +
+    `${routes === null ? '…' : fmt(routes)} module routes on the wafer`;
+}
+
+async function json(u) { const r = await fetch(u, { cache: 'default' }); if (!r.ok) throw new Error(u + ' HTTP ' + r.status); return r.json(); }
+async function bin(name, Kind) { const r = await fetch(PACK + name, { cache: 'default' }); if (!r.ok) throw new Error(name + ' HTTP ' + r.status); return new Kind(await r.arrayBuffer()); }
+
+map.on('load', async () => {
+  map.addSource('src-projects', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({ id: 'l-projects', type: 'circle', source: 'src-projects',
+    paint: { 'circle-color': '#ffcc00', 'circle-radius': CAPACITY_RADIUS, 'circle-stroke-width': 1.5, 'circle-stroke-color': '#000', 'circle-opacity': 0.35 } });
+  for (const l of [L132, SUBS]) {
+    map.addSource('src-' + l.id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    const base = { id: 'l-' + l.id, source: 'src-' + l.id };
+    if (l.type === 'line') map.addLayer({ ...base, type: 'line', paint: { 'line-color': l.color, 'line-width': l.width, 'line-opacity': 0.9 } });
+    else map.addLayer({ ...base, type: 'circle', paint: { 'circle-color': l.color, 'circle-radius': l.radius, 'circle-opacity': 0.85, 'circle-stroke-color': '#0b0d12', 'circle-stroke-width': 0.6 } });
+  }
+  map.on('click', 'l-subs', onSubstation);
+  map.on('click', 'l-projects', onProject);
+  for (const id of ['l-subs', 'l-projects']) {
+    map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
+  }
+
+  const jobs = [
+    json(RELEASE + SUBS.url).then(d => { G.subs = d.features || []; map.getSource('src-subs').setData({ type: 'FeatureCollection', features: G.subs }); counts(); }),
+    json(RELEASE + L132.url).then(d => map.getSource('src-132').setData({ type: 'FeatureCollection', features: d.features || [] })),
+    (async () => {
+      const [meta, lat, lon, mw, tech] = await Promise.all([json(PACK + 'pack.json'),
+        bin('lat.bin', Float32Array), bin('lon.bin', Float32Array), bin('mw.bin', Float32Array), bin('tech.bin', Uint8Array)]);
+      const n = lat.length;
+      if (meta.projects !== n) throw new Error(`pack says ${meta.projects} projects, lat.bin holds ${n}`);
+      const feats = new Array(n);
+      for (let i = 0; i < n; i++) feats[i] = { type: 'Feature', id: i, geometry: { type: 'Point', coordinates: [lon[i], lat[i]] },
+        properties: { i, capacity: mw[i], tech: meta.technologies[tech[i]] ?? null } };
+      map.getSource('src-projects').setData({ type: 'FeatureCollection', features: feats });
+      G.projects = n; counts();
+      json(PACK + 'names.json').then(ns => { G.names = ns; }).catch(() => {});
+    })()
+  ];
+  for (const j of jobs) j.catch(e => { $('said').textContent = 'could not load: ' + e.message; });
+});
+
+/* ── ground → wafer ─────────────────────────────────────────────────────── */
+
+function say(parts) {
+  $('said').replaceChildren(...parts.map(p => {
+    if (typeof p === 'string') return document.createTextNode(p);
+    const s = document.createElement('span'); s.className = 'sym'; s.textContent = p.sym; return s;
+  }));
+}
+const symOf = id => id.replace(/^module-/, '');
+
+async function lightFor(kind, what) {
+  const ids = DRAWN_BY[kind];
+  say([what + ' — drawn by ', ...ids.flatMap((id, k) => [k ? ' and ' : '', { sym: symOf(id) }]), '; lighting their routes on the wafer…']);
+  const L = layers();
+  if (!L) { say(['the wafer has not finished loading; tap again in a moment']); return; }
+  await L.light(ids);
+  say([what + ' — drawn by ', ...ids.flatMap((id, k) => [k ? ' and ' : '', { sym: symOf(id) }, ` [${L.status(id)}]`]), ' on the wafer']);
+}
+
+function onSubstation(e) {
+  const f = e.features && e.features[0]; if (!f) return;
+  const p = f.properties || {};
+  lightFor('substation', `substation ${p.name || '(unnamed)'}${p.voltage ? ' · ' + p.voltage + ' V' : ''}`);
+}
+function onProject(e) {
+  const f = e.features && e.features[0]; if (!f) return;
+  const p = f.properties || {};
+  const name = G.names ? G.names[p.i] : `project ${p.i}`;
+  lightFor('project', `project ${name} · ${fmt(Number(p.capacity).toFixed(1))} MW${p.tech ? ' · ' + p.tech : ''}`);
+}
+
+/* ── wafer → ground ─────────────────────────────────────────────────────── */
+
+function km(a, b) {
+  const R = 6371.0088, rad = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * rad, dLon = (b[0] - a[0]) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function onRoute(layerId) {
+  const L = layers();
+  const label = (L && L.label(layerId)) || layerId;
+  if (!G.subs || !G.subs.length) { say(['that route belongs to ', { sym: symOf(layerId) }, ' — substations are still loading']); return; }
+  const c = map.getCenter(), here = [c.lng, c.lat];
+  let best = null, bestD = Infinity;
+  for (const f of G.subs) { const d = km(here, f.geometry.coordinates); if (d < bestD) { bestD = d; best = f; } }
+  map.flyTo({ center: best.geometry.coordinates, zoom: Math.max(map.getZoom(), 9) });
+  say(['that route belongs to module ', { sym: symOf(layerId) }, ` (${label}) · map flown to the nearest substation to its centre: ${best.properties.name || '(unnamed)'}, ${bestD.toFixed(1)} km away`]);
+}
+
+(function hook() {
+  const L = layers();
+  if (!L) { setTimeout(hook, 200); return; }
+  L.onPick.add(id => onRoute(id));
+  const wait = () => { if (L.ids().length) counts(); else setTimeout(wait, 200); };
+  wait();
+})();
+$('wafer').addEventListener('load', counts);
+
+/* for tests: the real handlers, so a click can be fired with a real feature */
+window.__bridge = Object.freeze({ onSubstation, onProject, onRoute, map });
+</script>
+</body>
+</html>
