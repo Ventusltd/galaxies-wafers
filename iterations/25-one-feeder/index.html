@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>One Feeder — the physics of one radial line, charted</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="feeder.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>ONE FEEDER</h1>
+    <div class="dim">One radial feeder: a source busbar, a line, a load at the far end. Every number below is returned by three published engine modules called in this page; the page draws what they return and, where they refuse, draws the refusal in their words.</div>
+    <div id="mods" class="mods" aria-live="polite"></div>
+  </header>
+
+  <div class="cols">
+    <section class="chart">
+      <p class="boundary">Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.</p>
+      <h2>SINGLE-LINE DIAGRAM · VOLTAGE ALONG THE LINE</h2>
+      <canvas id="sld" role="img" aria-label="Single-line diagram of the feeder with current flow and voltage profile"></canvas>
+      <div id="flowkey" class="dim small"></div>
+      <div id="headroom" class="headroom small"></div>
+      <h2>POWER TRIANGLE · P, Q, S</h2>
+      <canvas id="tri" role="img" aria-label="Power triangle of real, reactive and apparent power"></canvas>
+    </section>
+
+    <section class="side">
+      <h2>SCENARIO INPUTS</h2>
+      <div id="inputs" class="inputs"></div>
+      <h2>RESULTS · AS THE MODULES RETURN THEM</h2>
+      <p class="boundary">Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.</p>
+      <ol id="results" class="results"></ol>
+      <h2>WHAT THE MODULES DO NOT COMPUTE</h2>
+      <div id="refuse" class="refuse small"></div>
+      <footer class="dim small">
+        Line colours are the Grid Atlas topology voltage colours (400kV, 275kV, 220kV, 132kV, 66kV, 11kV); the source busbar is drawn white as the Atlas draws substations.
+        The source is held at nominal voltage and the whole load is taken at the far end; those two are drawing assumptions of this page, not outputs of the modules.
+        <span id="pin"></span>
+        <a href="../">every version</a>
+      </footer>
+    </section>
+  </div>
+</main>
+<script type="module" src="feeder.mjs"></script>
+</body>
+</html>
