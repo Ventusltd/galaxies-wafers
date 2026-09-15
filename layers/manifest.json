@@ -82,6 +82,32 @@
    "bytes": 1514,
    "features": 0,
    "sha256": "b3878271c152c1df84bdfb3bbd447890a75d370d2eda3ef9b87892c6d36413a1"
+  },
+  {
+   "id": "star-generator",
+   "label": "The star generator",
+   "group": "THE WORKING MODULES",
+   "preload": false,
+   "colour": "#f48fb1",
+   "evidence": "blocks in the live register with files[].path under testcode/202609142225/, each function family they name placed at its first line",
+   "note": "The generator that draws a star: its core, its bench and its interface, as the register records them. Every function carries the same thirteen-parameter shell. Where a block's live address points at a different folder from its files, stats.live_mismatch says so.",
+   "file": "layers/star-generator.json",
+   "bytes": 4461,
+   "features": 6,
+   "sha256": "3655b0558901228a0996f0079dfcb9d41d718c5a7ed533f7ca2bb6082a09e861"
+  },
+  {
+   "id": "spider",
+   "label": "The spider",
+   "group": "THE WORKING MODULES",
+   "preload": false,
+   "colour": "#b39ddb",
+   "evidence": "files[] in the live register with repo Ventusltd/ventus-grid-engine at index.html or spider/",
+   "note": "The grid engine's spider, a two-parameter shell (graph, focus). It ships empty because the register has no block for it; the emptiness is the finding, recorded in stats.why.",
+   "file": "layers/spider.json",
+   "bytes": 1915,
+   "features": 0,
+   "sha256": "6e56560b46e26f63c2cb073ec47d91d0399ec1977e00b7aa3dab9c5f55c03d60"
   }
  ]
 }
