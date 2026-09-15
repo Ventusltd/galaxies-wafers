@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 35,
+ "count": 36,
  "iterations": [
   {
    "n": 1,
@@ -79,9 +79,9 @@
    "dir": "09-deeplink-receiver",
    "slug": "deeplink-receiver",
    "title": "The Line Wafer — iteration 09, the deep-link receiver",
-   "commit": "32b19f3c9071926acaedbe0444a635ae960347ca",
-   "committed": "2026-09-15T20:10:32+01:00",
-   "subject": "09: a layers-only link with an invalid zoom or to loads nothing (Codex review)"
+   "commit": "8ac6cd46e59927ac9acc970230285966d74dff15",
+   "committed": "2026-09-15T21:15:13+01:00",
+   "subject": "09b smooth zoom: the deep-link receiver gains the root page's fast zoom, receiver behaviour unchanged"
   },
   {
    "n": 10,
@@ -358,6 +358,15 @@
    "commit": "1ae0b652142efe6c031b4d0401b94bb64effaa14",
    "committed": "2026-09-15T21:04:24+01:00",
    "subject": "iteration 41 golden angle: The Placement Law"
+  },
+  {
+   "n": 42,
+   "dir": "42-counts-that-say-themselves",
+   "slug": "counts-that-say-themselves",
+   "title": "Counts That Say Themselves",
+   "commit": "e711a90a85f9ce9b06923fed6337d8e137e75368",
+   "committed": "2026-09-15T21:20:00+01:00",
+   "subject": "iteration 42 counts that say themselves: the estate's count sentences recomputed from live data"
   }
  ]
 }
