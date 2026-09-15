@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="color-scheme" content="dark">
+<title>Engines as Tools — the 400kV engine's drawing logic, applied to any layer</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../21-dark-pixels/style.css">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+
+<canvas id="stage" aria-label="Every permanently numbered line of code in the estate, placed by its own number, drawn dark."></canvas>
+
+<header id="bar">
+  <span id="wordmark">ENGINES AS TOOLS</span>
+  <span id="count" class="dim">loading the numbered database…</span>
+</header>
+
+<section id="tools" aria-label="tools picker">
+  <button id="toolsToggle" type="button" aria-expanded="true">TOOLS</button>
+  <div id="toolsBody">
+    <div class="tgroup">1 · LAYER <span class="dim">(nothing is fetched until you pick)</span></div>
+    <div id="layerRows"></div>
+    <div class="tgroup">2 · TOOL</div>
+    <div id="toolRows"></div>
+    <div id="status" class="tnote">pick a layer</div>
+    <div id="legend"></div>
+    <p id="disclaimer" class="tnote" hidden>Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.</p>
+    <details id="questions">
+      <summary>Questions</summary>
+      <dl>
+        <dt>1. How does this help draw a system or a single-line diagram?</dt><dd id="q1"></dd>
+        <dt>2. What is this code used for?</dt><dd id="q2"></dd>
+        <dt>3. Where does it lead next?</dt><dd id="q3"></dd>
+      </dl>
+    </details>
+    <p id="machine" class="tnote machine"></p>
+    <p id="loading" class="tnote"></p>
+  </div>
+</section>
+
+<form id="beam" autocomplete="off">
+  <input id="a" inputmode="numeric" pattern="[0-9]*" placeholder="line number" aria-label="line number to fly to">
+  <input id="b" inputmode="numeric" pattern="[0-9]*" placeholder="connect to…" aria-label="second line number to connect to">
+  <button id="go" type="submit">FLY</button>
+</form>
+
+<section id="panel" hidden>
+  <button id="close" type="button" aria-label="close">✕</button>
+  <div id="panelbody"></div>
+</section>
+
+<footer id="foot">
+  <span id="prov" class="dim">provenance loading</span>
+  <span id="wake" class="dim">the ground is iteration 21's dark wafer, imported unchanged</span>
+  <span id="hint" class="dim">drag to steer · pinch or scroll to focus · tools.mjs is the product</span>
+  <a id="proofs" href="tools.mjs">read tools.mjs</a>
+</footer>
+
+<noscript><p class="dim" style="padding:1rem">This surface is drawn from the numbered database at run time, so it needs JavaScript.</p></noscript>
+
+<script type="module" src="../21-dark-pixels/app.mjs"></script>
+<script type="module" src="demo.mjs"></script>
+</body>
+</html>
