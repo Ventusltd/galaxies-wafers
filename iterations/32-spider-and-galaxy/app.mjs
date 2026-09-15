@@ -28,7 +28,7 @@ import { atlasUrls, atlasFile, declaredLayerIds, configLayerIds, receiverLink, b
 import { shapeOf, newIndex, addBucket, holds, classify, CLASS_TEXT } from './unknown-paths.mjs';
 import { esc, fmt } from '../../lib.mjs';
 
-export const SHA = 'd9cd18b0e2034325814924e6e4a0e958014f2748';
+export const SHA = '23bc10acb5fb9577d5cd68b04ad6ed336c182013'; // ventus-grid-engine main after the spider manifest fix (genome-spider reads its real graph)
 const CDN = `https://cdn.jsdelivr.net/gh/Ventusltd/ventus-grid-engine@${SHA}/`;
 const REGISTER = 'https://ventusltd.github.io/stars/blocks/blocks.json';
 const ROOT = '../../';
