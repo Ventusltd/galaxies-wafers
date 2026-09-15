@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 17,
+ "count": 18,
  "iterations": [
   {
    "n": 1,
@@ -161,6 +161,15 @@
    "commit": "bdffefe2393eb817409702300c8e61bceeaa8378",
    "committed": "2026-09-15T19:54:04+01:00",
    "subject": "iteration 29 ratings that do not add: per-circuit ratings, a corridor, and the module's refusal to sum"
+  },
+  {
+   "n": 31,
+   "dir": "31-code-card-everywhere",
+   "slug": "code-card-everywhere",
+   "title": "Code Card Everywhere — tap anything on the wafer, read its code",
+   "commit": "6aec5dd4f3f3dba0909ddd9648a874761fe2977e",
+   "committed": "2026-09-15T20:05:47+01:00",
+   "subject": "iteration 31 code card everywhere: any tap opens a code card; change a digit locally and run the engine module"
   }
  ]
 }
