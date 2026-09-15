@@ -2,8 +2,11 @@
 
 These five lazy CodeFeatureCollections use issued line keys only. They neither
 change the substrate nor establish executable composition or engineering approval.
-The existing manifest is deliberately untouched; `codex-manifest-entries.json`
-is an integration fragment for the publishing owner.
+The existing manifest is deliberately untouched. The builder emits
+`manifest-entries.json` in the new output directory; its checked-in copy is
+`build/codex-manifest-entries.json`, an integration fragment for the publishing
+owner. Merge those entries into the current manifest without replacing its
+existing entries, checking IDs for collisions and verifying file hashes.
 
 ## Reproduce
 
