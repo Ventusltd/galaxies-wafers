@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>How the Estate Grew</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="growth.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>HOW THE ESTATE GREW</h1>
+    <p class="dim">The public registry <a href="https://github.com/Ventusltd/registry_of_all_content_in_repos_and_dependencies">Ventusltd/registry_of_all_content_in_repos_and_dependencies</a> writes a new numbered snapshot each time its builder runs and never overwrites an old one. This page reads those snapshots as published, counts what is in them, and shows what changed between any two. Open a section: nothing is fetched before that.</p>
+    <p class="schema small"><b>What a snapshot holds.</b> Each <code>registry/registry_vNNNN.json</code> carries <code>schema_version</code>, <code>registry_version</code>, <code>generated_at</code>, <code>totals</code> (<code>repo_count</code>, <code>file_count</code>, <code>reachable_count</code>, <code>unreachable_count</code>), <code>boot_sequence[]</code> (<code>repo</code>, <code>path</code>, <code>reason</code>) and <code>repos[]</code>, each with <code>name</code>, <code>role</code>, <code>default_branch</code>, <code>file_count</code>, <code>html_url</code>, <code>api_url</code> and <code>files[]</code> of <code>path</code>, <code>type</code>, <code>role</code>, <code>state</code>, <code>github_url</code>, <code>raw_url</code>. A numbered snapshot has no edges. Edges exist only in <code>graph_latest.json</code> (<code>nodes[]</code> with <code>id</code>, <code>label</code>, <code>kind</code>, <code>layer</code>, <code>x</code>, <code>y</code>, <code>source</code>; <code>edges[]</code> with <code>from</code>, <code>to</code>, <code>type</code>; <code>dataSource</code>), built for the newest version only; <code>latest.json</code> is a pointer (<code>authoritative_version</code>, <code>json_path</code>, <code>updated_at</code>), not a copy. Section 4 checks the top-level snapshot field names against the newest served snapshot.</p>
+    <p class="small dim" id="pin">Read at commit <code id="sha"></code> of that repository, which was the head of <code>origin/main</code> when this page was built (fetched with git). Files come from raw.githubusercontent.com at that commit, so the counts do not move when the registry does; the check below says whether main has moved since.</p>
+    <p id="summary" class="summary">WAIT: nothing is fetched until you open a section.</p>
+  </header>
+
+  <details class="sec" id="sec-timeline" data-sec="timeline">
+    <summary><span id="lbl-timeline" data-base-label="1 · Timeline of the numbered snapshots">1 · Timeline of the numbered snapshots [WAIT]</span></summary>
+    <p class="lead small dim">Lists the numbered files in <code>registry/</code> at the pinned commit, then fetches each snapshot through one queue of 4 (15 s timeout each), counts its <code>repos[]</code> and <code>files[]</code>, keeps only the counts and file paths, and drops the rest. The bar is files counted, against the largest snapshot read so far. Tap a failed row to try it again.</p>
+    <ol class="rows" id="rows-timeline"></ol>
+  </details>
+
+  <details class="sec" id="sec-diff" data-sec="diff">
+    <summary><span id="lbl-diff" data-base-label="2 · What changed between two snapshots">2 · What changed between two snapshots [WAIT]</span></summary>
+    <p class="lead small dim">Choose two snapshots. Only those two are fetched (shared with the timeline, never twice). Lists are sorted and paged; entries withheld for company or customer names are counted, not shown.</p>
+    <div class="pick">
+      <label class="small dim" for="d-from">from</label><select id="d-from" aria-label="from snapshot"><option>open the section first</option></select>
+      <label class="small dim" for="d-to">to</label><select id="d-to" aria-label="to snapshot"><option>open the section first</option></select>
+      <button type="button" id="d-go" disabled>compare</button>
+    </div>
+    <p class="lead small" id="d-status">WAIT: choose two snapshots.</p>
+    <div id="d-lists"></div>
+  </details>
+
+  <details class="sec" id="sec-graph" data-sec="graph">
+    <summary><span id="lbl-graph" data-base-label="3 · The graph as the registry draws it">3 · The graph as the registry draws it [WAIT]</span></summary>
+    <p class="lead small dim">graph_latest.json drawn on a dark canvas at its own <code>x</code>, <code>y</code>. Repositories are the large points, their chosen files the small ones. A line is drawn only when both of its ends are nodes in the file, cased so it reads on black, in the colour and dash its <code>edgeTypes</code> entry declares. Drag to pan, pinch or wheel to zoom, tap a point.</p>
+    <div class="pick">
+      <label class="tog small"><input type="checkbox" id="g-files" checked> file nodes</label>
+      <button type="button" id="g-fit">fit</button>
+    </div>
+    <div class="stage"><canvas id="g-canvas" aria-label="registry graph"></canvas></div>
+    <p class="lead small dim" id="g-stats">WAIT</p>
+    <div class="card" id="g-card" hidden>
+      <p class="rhead"><span class="st" id="g-kind"></span><b id="g-label"></b></p>
+      <dl class="kv small" id="g-kv"></dl>
+      <p class="btns"><a class="btn" id="g-open" target="_blank" rel="noopener" hidden>Open on GitHub</a> <a class="btn" id="g-source" target="_blank" rel="noopener" hidden>source file</a></p>
+    </div>
+  </details>
+
+  <details class="sec" id="sec-check" data-sec="check">
+    <summary><span id="lbl-check" data-base-label="4 · Do the pointer, the newest snapshot and the graph agree?">4 · Do the pointer, the newest snapshot and the graph agree? [WAIT]</span></summary>
+    <p class="lead small dim">Reads the directory listing, <code>latest.json</code>, <code>graph_latest.json</code> and the newest numbered snapshot, and compares the fields the builder's own validator names (<code>scripts/validate_kernel_outputs.py</code>) plus the counts. MATCH, DIFFERS or NOT YET KNOWN; no colour here is a verdict.</p>
+    <ul class="rows" id="rows-check"></ul>
+  </details>
+
+  <details id="questions" class="questions">
+    <summary>Questions</summary>
+    <dl>
+      <dt>1. How does this help draw a system or a single-line diagram?</dt>
+      <dd>It draws no busbar, feeder, transformer, cable route, protection or earthing: none yet. The registry's own graph declares <code>mapType</code> <span id="q-maptype">(not yet known: open section 3)</span>, a single-line picture of the software, not of the grid. What it does supply to a system drawing is the inventory that says where the drawing data lives: <code>repos[].files[]</code> entries with <code>type</code> <code>geojson</code> and <code>role</code> <code>geospatial layer</code> or <code>data contract or schema</code>. <span id="q-geo">Counts not yet known: open section 1 or 4.</span></dd>
+      <dt>2. What is this code used for?</dt>
+      <dd>Written by <code>.github/workflows/registry.yml</code> in the registry repository (on push, on dispatch, and weekly by cron), which runs <code>scripts/build_registry_from_config.py</code> or <code>reconcile_registry_from_config.py</code>, then <code>build_graph_latest.py</code>, <code>build_kernel.py</code> and <code>validate_kernel_outputs.py</code>; scope is <code>config/registry_repos.json</code>. Readers found by searching the estate's repositories for the text <code>registry_of_all_content_in_repos_and_dependencies</code>, <code>registry/latest.json</code> and <code>graph_latest.json</code> (name-match inference): <a href="https://github.com/Ventusltd/spiders/blob/5575e70a28205385d0d402c1cf4a4efeac7f5db4/.github/workflows/spider_printer_registry_smoke.yml">spiders <code>.github/workflows/spider_printer_registry_smoke.yml</code></a> (weekly: reads <code>latest.json</code>, its <code>json_path</code>, asserts <code>totals</code>, reads <code>graph_latest.json</code> nodes); <a href="https://github.com/Ventusltd/globalgrid2050/blob/a4faffc1cc188ff318d9a1c18941865d94529963/assets/dashboard.js#L3">globalgrid2050 <code>assets/dashboard.js</code> line 3</a> <code>REGISTRY_URL</code>, a link on the dashboard; the registry's own <code>index.html</code> (fetches <code>latest.json</code>); and this galaxy's <code>layers/manifest.json</code> block x474, the functions of <code>scripts/build_registry.py</code>. Other hits were session notes and study papers citing it. This page: <code>registry.mjs</code> <code>summarise</code>, <code>diff</code>, <code>graphFacts</code>, <code>parseRepoSubtitle</code>, <code>check</code>, <code>isWithheld</code>; <code>app.mjs</code> <code>FetchQueue</code>, <code>fetchOnce</code>, <code>hydrate</code>, <code>fillRow</code>, <code>drawGraph</code>.</dd>
+      <dt>3. Where does it lead next?</dt>
+      <dd>To the dependency graph the estate's principle asks for, every repo a node and every dependency an edge. <span id="q-next">Not yet known: open section 3, which counts the edge types <code>graph_latest.json</code> declares against the edges it holds.</span></dd>
+    </dl>
+  </details>
+  <p id="machine" class="machine small">Machine detail · not yet known: open a section.</p>
+
+  <footer class="dim small">
+    <p>Loading, as Grid Atlas does it: every section exists from the start and fetches nothing until opened; one queue of 4 carries every request, each with a 15 s timeout; one promise per URL, removed on failure so a retry is possible; only the changed row or label is rewritten; closing a section keeps what was read. The snapshots are a bounded, numbered set: each is reduced to counts and paths as it arrives, and the parsed file is dropped. Lists show one page of 12 at a time; the canvas draws only nodes and edges inside the view.</p>
+    <p>MATCH has a solid rule, DIFFERS a double rule, NOT YET KNOWN a dotted grey rule. <a href="../">every version</a></p>
+  </footer>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
