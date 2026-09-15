@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 13,
+ "count": 14,
  "iterations": [
   {
    "n": 1,
@@ -91,6 +91,22 @@
    "commit": "0ac07784b462b590864ee426cd4fc413b8d6f2a9",
    "committed": "2026-09-15T17:54:16+01:00",
    "subject": "iteration 10, the ground bridge: 5,800 substations, 7,680 projects, 187 module routes on the wafer"
+  },
+  {
+   "n": 11,
+   "dir": "11-the-bond",
+   "slug": "the-bond",
+   "title": "The Bond — inspect the evidence behind a layer",
+   "commit": "",
+   "committed": "",
+   "subject": "",
+   "source": {
+    "repo": "Ventusltd/testcode",
+    "path": "sandbox/202609151815-galaxy-bond/",
+    "sha": "e0185b61bda31dee576f105a7ef16c4e28fae0e3",
+    "author": "Codex",
+    "copied_by": "Opus review: private scan clean, relative paths only, wafer.mjs identical to the galaxy root, loads with zero page errors in Chrome and WebKit"
+   }
   },
   {
    "n": 21,

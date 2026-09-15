@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="data:,">
+  <title>The Bond — inspect the evidence behind a layer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header><div><p class="eyebrow">CODE GALAXY · EVIDENCE</p><h1>The Bond</h1></div><a id="source" href="https://github.com/Ventusltd/galaxies-wafers">Pinned source</a></header>
+  <p class="intro">Read a layer's promise. Inspect what is checked, what contradicts it, and what remains unknown.</p>
+  <p id="load" role="status">Reading the audit…</p>
+  <main id="workspace" hidden>
+    <section class="overview" aria-label="Audit overview">
+      <dl id="totals" class="totals"></dl>
+      <p id="coverage" class="scope"></p>
+      <div class="map"><canvas id="wafer" aria-label="Sampled issued anchors on the frozen code wafer"></canvas><p id="map-note"></p></div>
+      <article id="inspection" aria-live="polite" tabindex="-1"><h2>Select a layer</h2><p>Its claim, evaluated predicates and gaps appear here.</p></article>
+    </section>
+    <section class="catalogue" aria-label="Layers">
+      <div class="controls"><label>Find a layer<input id="search" type="search" placeholder="Name or claim" autocomplete="off"></label><label>Result<select id="status"><option value="">Every result</option><option>CONTRADICTED</option><option>PARTIALLY EVALUATED</option><option>NOT EVALUATED</option><option>HONOURED</option></select></label></div>
+      <p class="scope">A pass covers named predicates only. Disclosed gaps are not penalties; unsupported prose is not a pass.</p>
+      <p id="shown" role="status"></p>
+      <p id="selection-note" role="status"></p>
+      <div id="layers"></div>
+    </section>
+  </main>
+  <footer><p id="provenance"></p><p>Code-evidence inspection, not an engineering design or certification. The preview samples issued anchors; it is not the full numbered database.</p><a href="report.json">Read the full audit data</a> · <a href="README.md">Scope and reproduction</a></footer>
+  <script type="module" src="app.mjs"></script>
+</body>
+</html>

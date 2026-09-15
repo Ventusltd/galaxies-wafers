@@ -1,0 +1,274 @@
+{
+  "schema": "bond.bundle-verification.v1",
+  "verifier_version": "1.0.0",
+  "bundle_scope": "Bundle consistency and executable checks; partial or unevaluated claim rows are permitted. Honest CONTRADICTED rows are permitted unless the optional contradiction gate is enabled. Source identities are checked offline; no source repository is fetched.",
+  "status": "PASSED",
+  "fail_on_contradiction": false,
+  "source": {
+    "repo": "Ventusltd/galaxies-wafers",
+    "commit": "be62c82b9ffebeaa9b1152a7e7fae1658b585d4b",
+    "manifest_sha256": "d910fdf742c527429c5b9c41bc77536c7a8878081dd872acc29797939088fe3d"
+  },
+  "runtime_counts": {
+    "layers": 201,
+    "statements": 778,
+    "gapRecords": 18,
+    "checked": 174536,
+    "total": 257295,
+    "statuses": {
+      "CONTRADICTED": 0,
+      "PARTIALLY EVALUATED": 194,
+      "NOT EVALUATED": 7,
+      "HONOURED": 0
+    }
+  },
+  "artifacts": [
+    {
+      "file": "API.md",
+      "bytes": 7837,
+      "sha256": "dddd97b72ffbd3435ffb72d683dc95870ebcfed14153895f1df43cd7e6bc2403"
+    },
+    {
+      "file": "EVIDENCE.md",
+      "bytes": 1337,
+      "sha256": "b1e8388a9cfbb5733f3e95c2a09b104c5f38dc7e6b8a11e4899afc36e2172a54"
+    },
+    {
+      "file": "README.md",
+      "bytes": 3131,
+      "sha256": "6ad224a3e504146149718a4d387e095cd1a8b2a31b116f1e3617c6af93a9892e"
+    },
+    {
+      "file": "VERIFY-BUNDLE.md",
+      "bytes": 5229,
+      "sha256": "ba0d94d280660862038512cf41587d3efb1f2da25e809d29a32e2b4176a47be3"
+    },
+    {
+      "file": "app.mjs",
+      "bytes": 7751,
+      "sha256": "7205a5c0fd368cff291762591c13e3dd1b28eb8c2b32759433a2f2e0bc5d5a5a"
+    },
+    {
+      "file": "bond_validator.py",
+      "bytes": 36142,
+      "sha256": "054efd437ba3548cf64eb143efcf463b83126c6f950e1c9cd0ed56bc275dc1d5"
+    },
+    {
+      "file": "build_report.py",
+      "bytes": 4604,
+      "sha256": "f93be056e8caabc857b6a43a3e8b5b92925682f69f29e36b6895a021210929cc"
+    },
+    {
+      "file": "index.html",
+      "bytes": 2241,
+      "sha256": "93656c0ee3f7edc6b6af75014de03bb01d18be3efb75e87cc384e388987b7927"
+    },
+    {
+      "file": "model.mjs",
+      "bytes": 3139,
+      "sha256": "0a7b8c3be65c4e560dad3f9362cc99bac582c68aff078c2db8e614cb70894d94"
+    },
+    {
+      "file": "model.test.mjs",
+      "bytes": 2400,
+      "sha256": "6bfe4735923e16e8f4584fec59fac57c55a46c6c4490ffaf11eb7d4643789bba"
+    },
+    {
+      "file": "report.json",
+      "bytes": 1006802,
+      "sha256": "afdf47c3d90b5292595395c10c5e581640e8d4bfccd4e623f98bf5dcd20d7ebb"
+    },
+    {
+      "file": "style.css",
+      "bytes": 2926,
+      "sha256": "06babfc90664ee5dd68b814f977853ed8b80abc9151cff1ac789b8d1c46c2b0d"
+    },
+    {
+      "file": "test_adversarial_v2.py",
+      "bytes": 6751,
+      "sha256": "02dbfac07b43dd34f8e6222976e05e697071ada6d3e2c28b3135fec526686fab"
+    },
+    {
+      "file": "test_bond_validator.py",
+      "bytes": 10508,
+      "sha256": "3c81809934a607d7b8bf244aff920901a64e3f68f6469b9adc7d4ed842971a8a"
+    },
+    {
+      "file": "test_v2_contract.py",
+      "bytes": 5613,
+      "sha256": "8bf85daeee58fd66d02594f4e9e2fff62f38d092750e926a29ffd4323af642f1"
+    },
+    {
+      "file": "test_verify_bundle.py",
+      "bytes": 10679,
+      "sha256": "6250ac55f5c44b8e13647fcf367296b9f9f52a48abd75e390fb236e94e09dcb4"
+    },
+    {
+      "file": "verify_bundle.py",
+      "bytes": 16119,
+      "sha256": "bc68c5662994f0968a54e5fea939256e1fe4d456cf30331a15c603e45eebfe22"
+    },
+    {
+      "file": "wafer.mjs",
+      "bytes": 3518,
+      "sha256": "2edf7401a998ef49829ac386a39f85eb5154f40dd5f0799ea5db737c8b8ede7b"
+    }
+  ],
+  "checks": [
+    {
+      "id": "bundle.inventory",
+      "status": "PASSED",
+      "files": 18,
+      "issue_count": 0
+    },
+    {
+      "id": "bundle.required_files",
+      "status": "PASSED",
+      "required_files": 8,
+      "present_required_files": 8
+    },
+    {
+      "id": "bundle.python_test_files",
+      "status": "PASSED",
+      "files": 4
+    },
+    {
+      "id": "bundle.canonical_wafer",
+      "status": "PASSED"
+    },
+    {
+      "id": "report.format",
+      "status": "PASSED"
+    },
+    {
+      "id": "report.provenance",
+      "status": "PASSED"
+    },
+    {
+      "id": "report.source_identities",
+      "status": "PASSED",
+      "source_records": 3
+    },
+    {
+      "id": "report.source_input_checks",
+      "status": "PASSED",
+      "source_input_checks": 6
+    },
+    {
+      "id": "report.source_input_issues",
+      "status": "PASSED"
+    },
+    {
+      "id": "report.row_consistency",
+      "status": "PASSED"
+    },
+    {
+      "id": "report.row_totals",
+      "status": "PASSED"
+    },
+    {
+      "id": "report.aggregate_totals",
+      "status": "PASSED"
+    },
+    {
+      "id": "python.unittest",
+      "status": "PASSED",
+      "tests": 75,
+      "skipped": 0,
+      "expected_failures": 0,
+      "exit_code": 0,
+      "timed_out": false,
+      "available": true,
+      "duration_ms": 375,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "63127e1910a64699816b4adba21c2b820bfb151365b080819377ee0ef6f3b3df"
+    },
+    {
+      "id": "node.model_tests",
+      "status": "PASSED",
+      "counts": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "exit_code": 0,
+      "timed_out": false,
+      "available": true,
+      "duration_ms": 94,
+      "stdout_sha256": "99a69dc8bfe2f766d5ea56ad22fc1faa80c67efbb5cbebaa32d9b1ef8d17ed02",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "javascript.syntax",
+      "status": "PASSED",
+      "file": "app.mjs",
+      "exit_code": 0,
+      "timed_out": false,
+      "available": true,
+      "duration_ms": 31,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "javascript.syntax",
+      "status": "PASSED",
+      "file": "model.mjs",
+      "exit_code": 0,
+      "timed_out": false,
+      "available": true,
+      "duration_ms": 32,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "javascript.syntax",
+      "status": "PASSED",
+      "file": "model.test.mjs",
+      "exit_code": 0,
+      "timed_out": false,
+      "available": true,
+      "duration_ms": 31,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "javascript.syntax",
+      "status": "PASSED",
+      "file": "wafer.mjs",
+      "exit_code": 0,
+      "timed_out": false,
+      "available": true,
+      "duration_ms": 31,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "node.runtime_report_totals",
+      "status": "PASSED",
+      "exit_code": 0,
+      "timed_out": false,
+      "available": true,
+      "duration_ms": 47,
+      "stdout_sha256": "4576850f92a60e5fb38ced7a15fccae93ee03641edf36a6db728edea669710f0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "bundle.unchanged_during_verification",
+      "status": "PASSED"
+    }
+  ],
+  "canonical_wafer": {
+    "file": "wafer.mjs",
+    "normalization": "CRLF to LF only",
+    "expected_sha256": "3f7a57344a804fbc7e7352155b40fe0d3cae42c8f6d1fd50a7dfc4b6234c0809",
+    "actual_sha256": "3f7a57344a804fbc7e7352155b40fe0d3cae42c8f6d1fd50a7dfc4b6234c0809"
+  },
+  "check_counts": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0
+  }
+}

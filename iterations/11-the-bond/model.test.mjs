@@ -1,0 +1,17 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {validateReport,filterRows,summarise,selectionFromHash,layerHash} from './model.mjs';
+const row = () => ({layer_id:'sample',claim_text:'A numbered Anchor',status:'PARTIALLY EVALUATED',predicates:[{status:'PASSED',checked:2,total:2,passed:2,failed:0}],not_evaluated:[{text:'A broader claim'}],disclosed:[]});
+const report = () => ({schema:'bond.v1',provenance:{commit:'a'.repeat(40)},input_checks:[{status:'PASSED'}],rows:[row()]});
+test('accepts bounded partial report',()=>assert.equal(validateReport(report()).rows.length,1));
+test('rejects duplicate layer identifiers',()=>{const r=report();r.rows.push(row());assert.throws(()=>validateReport(r),/duplicate/);});
+test('rejects failed source inputs',()=>{const r=report();r.input_checks[0].status='FAILED';assert.throws(()=>validateReport(r),/input/);});
+test('rejects incomplete predicate passed',()=>{const r=report();r.rows[0].predicates[0].total=3;assert.throws(()=>validateReport(r),/Incomplete/);});
+test('rejects inconsistent counters',()=>{const r=report();r.rows[0].predicates[0].passed=1;assert.throws(()=>validateReport(r),/coverage/);});
+test('rejects a contradiction hidden in partial status',()=>{const r=report();Object.assign(r.rows[0].predicates[0],{status:'FAILED',passed:1,failed:1});assert.throws(()=>validateReport(r),/Contradiction/);});
+test('does not honour remaining prose',()=>{const r=report();r.rows[0].status='HONOURED';assert.throws(()=>validateReport(r),/honoured/);});
+test('counts rows and check units from predicates',()=>{const s=summarise([row()]);assert.equal(s.checked,2);assert.equal(s.total,2);assert.equal(s.statements,1);assert.equal(s.statuses['PARTIALLY EVALUATED'],1);});
+test('filters case insensitive name or claim with result',()=>{const rows=[row()];assert.equal(filterRows(rows,' anchor ','PARTIALLY EVALUATED').length,1);assert.equal(filterRows(rows,'anchor','HONOURED').length,0);});
+test('selection hash round trips exact identity',()=>{const r=row();r.layer_id='a & b';assert.equal(selectionFromHash(layerHash(r.layer_id),[r]).row,r);});
+test('unknown selection does not invent a layer',()=>assert.match(selectionFromHash('#layer=absent',[row()]).why,/absent/));
+test('duplicate selection is refused',()=>assert.match(selectionFromHash('#layer=sample&layer=sample',[row()]).why,/more than one/));
