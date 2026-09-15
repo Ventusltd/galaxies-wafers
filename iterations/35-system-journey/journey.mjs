@@ -1,12 +1,17 @@
 /* One System, Stop by Stop.
    Five published engine calculations chained into one illustrative system and
-   drawn as a single-line diagram that grows stop by stop. Every electrical or
-   geometric number is returned by ventus-grid-engine at the pinned commit,
-   imported at run time. This file writes no engineering formula. It does three
-   things of its own, each stated where it happens: it checks the unit and
-   meaning on every wire between two calculations, it applies a named unit
-   conversion (km to m, kVA to MVA, kV to V) only when the reader leaves
-   "stated conversions" on, and it draws. */
+   drawn as a single-line diagram that grows stop by stop. Every PRIMARY
+   calculation (demand, nearest node and its distance, route length, corridor
+   estimate, apparent and reactive power, current, voltage drop, drop percent,
+   losses, rating labels) is returned by ventus-grid-engine at the pinned
+   commit, imported at run time. This file does some arithmetic of its own,
+   each piece stated where it happens: thermal output times units (the thermal
+   quantity offered on the stop 1 wire), differences between two returned
+   numbers (stop 2 ranks, stop 3 radius comparisons), the named unit
+   conversions (km to m, kVA to MVA, kV to V) applied only when the reader
+   leaves "stated conversions" on, and the display projection of the stop 2
+   plane. It also checks unit, meaning, voltage basis and numeric finiteness
+   on every wire between two calculations, and it draws. */
 
 const COMMIT = 'd9cd18b0e2034325814924e6e4a0e958014f2748';
 const BASE = `https://cdn.jsdelivr.net/gh/Ventusltd/ventus-grid-engine@${COMMIT}/`;
@@ -18,7 +23,8 @@ const nf = (v, sig = 4) => (typeof v === 'number' && Number.isFinite(v)) ? v.toL
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const attempt = fn => { try { return { ok: fn() }; } catch (e) { return { err: (e && e.message) || String(e) }; } };
 
-const BOUNDARY = 'Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.';
+const BOUNDARY = 'Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Project policy: any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.';
+const PRIMARY_ONLY = 'Primary calculations come from the engine modules. This page itself computes thermal output times units, differences between two returned numbers, and the stated unit conversions, each shown where it is used.';
 const FINAL = 'each stop is a separate published calculation; the chain is an illustration, not a connection study';
 
 /* Grid Atlas v8 topology colours; substations white. A voltage the Atlas does
@@ -177,29 +183,59 @@ const S = {
 {
   const m = /stop=([1-5])/.exec(location.hash);
   if (m) S.stop = +m[1];
+  /* Fault injection, visible on the page: #nan=<wire id> replaces the value
+     carried on that one wire with NaN so the finiteness refusal can be seen. */
+  const f = /nan=([a-z]+)/.exec(location.hash);
+  S.nan = f ? f[1] : null;
 }
 
 /* ── wires: the page's own check between two calculations ────────────────── */
 const CONVERSIONS = {
   'km->m': { factor: 1000, text: '1 km = 1,000 m' },
-  'kVA->MVA': { factor: 0.001, text: '1 kVA = 0.001 MVA' },
+  'kVA->MVA': { factor: 0.001, text: '1 kVA = 0.001 MVA' }, /* a conversion factor: skipping it overstates MVA 1000x */
   'kV->V': { factor: 1000, text: '1 kV = 1,000 V' }
 };
-/* q: { value, unit, meaning } or null with emptyWhy. accepts: { unit, meanings, why } */
+/* Fault injection and the finiteness gate, shared by every wire. q.nums lists
+   every number the wire carries (default [q.value]); a text value must be a
+   non-empty string. unsound() returns a refusal reason, or '' when sound. */
+function inject(id, q) {
+  if (!q || S.nan !== id) return q;
+  return { ...q, value: NaN, nums: q.nums ? [NaN, ...q.nums.slice(1)] : undefined, show: undefined, injected: true };
+}
+function unsound(q) {
+  if (typeof q.value === 'string' && !q.nums) return q.value ? '' : 'The carried text is empty, so nothing crosses this wire.';
+  const nums = q.nums || [q.value];
+  const bad = nums.find(v => typeof v !== 'number' || !Number.isFinite(v));
+  if (bad === undefined && nums.length) return '';
+  return `The carried value ${String(bad)} is not a finite number, so nothing crosses this wire. Finiteness is checked before unit and meaning: a matching label is not a sound value.`;
+}
+const INJECTED = id => `fault injection from the page address (#nan=${id}): the value on this wire was replaced with NaN to show the refusal.`;
+
+/* q: { value, unit, meaning, basis?, nums? } or null with emptyWhy.
+   accepts: { unit, meanings, basis?, basisWhy?, why, okWhy } */
 function connect({ id, from, to, q, emptyWhy, accepts }) {
+  q = inject(id, q);
   const w = { id, from, to, q, accepts, state: 'EMPTY', reason: '', direct: '', out: null };
   if (!q) { w.reason = emptyWhy || 'nothing was returned upstream'; return w; }
+  const bad = unsound(q);
+  if (bad) { w.state = 'REFUSED'; w.reason = (q.injected ? INJECTED(id) + ' ' : '') + bad; return w; }
   if (accepts.meanings && !accepts.meanings.includes(q.meaning)) {
     w.state = 'REFUSED';
     w.reason = `meaning "${q.meaning}" is not one this input accepts (${accepts.meanings.map(m => `"${m}"`).join(', ')}). ${accepts.why || ''}`.trim();
     return w;
   }
+  if (accepts.basis && q.basis !== accepts.basis) {
+    w.state = 'REFUSED';
+    w.reason = accepts.basisWhy || `voltage basis "${q.basis || 'not stated'}" is not the "${accepts.basis}" basis this input takes.`;
+    return w;
+  }
   if (q.unit !== accepts.unit) {
     const conv = CONVERSIONS[`${q.unit}->${accepts.unit}`];
-    w.direct = `direct connection REFUSED: ${nf(q.value, 6)} ${q.unit} into an input that takes ${accepts.unit}` + (conv ? ` would be read as ${nf(q.value, 6)} ${accepts.unit}, wrong by a factor of ${nf(conv.factor)}.` : '; no stated conversion exists.');
+    const skip = conv ? (conv.factor < 1 ? `overstates ${accepts.unit} ${nf(1 / conv.factor)}×` : `understates ${accepts.unit} ${nf(conv.factor)}×`) : '';
+    w.direct = `direct connection REFUSED: ${nf(q.value, 6)} ${q.unit} into an input that takes ${accepts.unit}` + (conv ? ` would be read as ${nf(q.value, 6)} ${accepts.unit}. ${nf(conv.factor)} is a conversion factor; skipping it ${skip}.` : '; no stated conversion exists.');
     if (conv && S.convert) {
       w.state = 'CONVERTED';
-      w.out = { value: q.value * conv.factor, unit: accepts.unit, meaning: q.meaning };
+      w.out = { value: q.value * conv.factor, unit: accepts.unit, meaning: q.meaning, basis: q.basis };
       w.reason = `stated unit conversion by this page: ${conv.text}, so ${nf(q.value, 6)} ${q.unit} crosses as ${nf(w.out.value, 6)} ${accepts.unit}; the meaning is unchanged.`;
     } else {
       w.state = 'REFUSED';
@@ -208,12 +244,30 @@ function connect({ id, from, to, q, emptyWhy, accepts }) {
     return w;
   }
   w.state = 'ACCEPTED';
-  w.out = { value: q.value, unit: q.unit, meaning: q.meaning };
+  w.out = { value: q.value, unit: q.unit, meaning: q.meaning, basis: q.basis };
   w.reason = accepts.okWhy || 'unit and meaning match what the input takes.';
   return w;
 }
 
-/* ── the chain: every call below is a module call ────────────────────────── */
+/* A wire built by hand (a text key, or a fixed refusal) passes the same
+   injection and finiteness gate as connect(). */
+function gate(w) {
+  if (!w.q) return w;
+  w.q = inject(w.id, w.q);
+  const bad = unsound(w.q);
+  if (bad) { w.state = 'REFUSED'; w.reason = (w.q.injected ? INJECTED(w.id) + ' ' : '') + bad; w.unsound = true; }
+  return w;
+}
+
+/* The voltage basis. current-from-power.js states that for phases "three" the
+   voltage is line-to-line and for phases "single" it is line-to-neutral. The
+   fixture node declares kV with no line-neutral or service basis. No
+   line-to-neutral connection is inferred and no sqrt(3) is inserted: the
+   joined path stays three-phase and single phase is refused on that wire. */
+const BASIS_OF_PHASES = { three: 'line-to-line', single: 'line-to-neutral' };
+const NO_LN = 'the node declares line-to-line kV only; no line-neutral basis is established';
+
+/* ── the chain: the primary calculations below are module calls ─────────── */
 function chain() {
   const R = { wires: {} };
 
@@ -262,12 +316,13 @@ function chain() {
   const gc = M('gc'), ce = M('ce');
   R.wires.loc = connect({
     id: 'loc', from: 'stop 2 · nearest().point.location', to: 'stop 3 · distanceKm(lon1, lat1, lon2, lat2)',
-    q: node ? { value: node.location.lon, unit: 'degrees (lon, lat)', meaning: 'mapped node location, GeoJSON order' } : null,
+    q: node ? { value: node.location.lon, nums: [node.location.lon, node.location.lat], unit: 'degrees (lon, lat)', meaning: 'mapped node location, GeoJSON order' } : null,
     emptyWhy: R.s2 && R.s2.empty ? R.s2.empty : 'no mapped node was returned at stop 2',
     accepts: { unit: 'degrees (lon, lat)', meanings: ['mapped node location, GeoJSON order'], okWhy: `location.lon and location.lat are passed as lon2, lat2, in the (lon, lat) order distanceKm documents.` }
   });
-  if (R.wires.loc.q) R.wires.loc.q.show = `lon ${nf(node.location.lon, 7)}°, lat ${nf(node.location.lat, 7)}°`;
+  if (R.wires.loc.q && !R.wires.loc.q.injected) R.wires.loc.q.show = `lon ${nf(node.location.lon, 7)}°, lat ${nf(node.location.lat, 7)}°`;
   if (!node) R.s3 = { empty: R.wires.loc.reason };
+  else if (R.wires.loc.state !== 'ACCEPTED') R.s3 = { empty: `the location wire is ${R.wires.loc.state}: ${R.wires.loc.reason}` };
   else if (!geo9 || !gc || !ce) R.s3 = { empty: !geo9 ? why('geo9') : !gc ? why('gc') : why('ce') };
   else {
     const straight = geo9.distanceKm(S.lon, S.lat, node.location.lon, node.location.lat);
@@ -287,9 +342,14 @@ function chain() {
   const declared = node ? node.voltages_kv.includes(S.kv) : false;
   R.wires.kv = connect({
     id: 'kv', from: 'stop 2 · nearest().point.voltages_kv', to: 'stop 4 · currentFromMvaAtKv({ kv })',
-    q: node && S.kv != null ? { value: S.kv, unit: 'kV', meaning: declared ? 'voltage declared by the node' : 'voltage not declared by the node' } : null,
+    q: node && S.kv != null ? { value: S.kv, unit: 'kV', meaning: declared ? 'voltage declared by the node' : 'voltage not declared by the node', basis: 'line-to-line' } : null,
     emptyWhy: 'no mapped node was returned at stop 2',
-    accepts: { unit: 'kV', meanings: ['voltage declared by the node'], why: node ? `The node declares ${node.voltages_kv.join(', ')} kV. No transformer is modelled in this chain, so a feeder at another voltage is not joined to that busbar.` : '', okWhy: 'the feeder is asked at a voltage the node declares.' }
+    accepts: {
+      unit: 'kV', meanings: ['voltage declared by the node'], basis: BASIS_OF_PHASES[S.phases],
+      basisWhy: `${NO_LN}. phases "${S.phases}" takes a ${BASIS_OF_PHASES[S.phases]} voltage (current-from-power.js: three-phase is line-to-line, single-phase is line-to-neutral). No line-to-neutral voltage is inferred and no sqrt(3) is inserted, so nothing crosses this wire; the joined path stays three-phase.`,
+      why: node ? `The node declares ${node.voltages_kv.join(', ')} kV. No transformer is modelled in this chain, so a feeder at another voltage is not joined to that busbar.` : '',
+      okWhy: `the feeder is asked at a voltage the node declares, basis line-to-line, which is the voltage currentFromMvaAtKv takes for phases "three".`
+    }
   });
   const corrQ = R.s3 && !R.s3.empty && R.s3.corridor && R.s3.corridor.km != null ? { value: R.s3.corridor.km, unit: 'km', meaning: 'cable corridor estimate' } : null;
   R.wires.len = connect({
@@ -325,9 +385,9 @@ function chain() {
     s4.W = A && Lm ? attempt(() => vd.lossesWatts({ currentA: A.value, lengthM: Lm.value, resistanceOhmPerKm: S.r, phases: S.phases })) : { empty: s4.D.empty };
     R.wires.nom = connect({
       id: 'nom', from: 'stop 4 · the kV that crossed the voltage wire', to: 'stop 4 · dropPercent({ nominalVolts })',
-      q: kvIn ? { value: kvIn.value, unit: 'kV', meaning: 'nominal voltage' } : null,
+      q: kvIn ? { value: kvIn.value, unit: 'kV', meaning: 'nominal voltage', basis: kvIn.basis } : null,
       emptyWhy: `the voltage wire is ${R.wires.kv.state}: ${R.wires.kv.reason}`,
-      accepts: { unit: 'V', meanings: ['nominal voltage'] }
+      accepts: { unit: 'V', meanings: ['nominal voltage'], basis: 'line-to-line' }
     });
     s4.P = s4.D.ok && R.wires.nom.out ? attempt(() => vd.dropPercent({ dropVolts: s4.D.ok.value, nominalVolts: R.wires.nom.out.value }))
       : { empty: !s4.D.ok ? (s4.D.err ? `voltageDropVolts refused: ${s4.D.err}` : s4.D.empty) : `the nominal-voltage wire is ${R.wires.nom.state}: ${R.wires.nom.reason}` };
@@ -345,30 +405,32 @@ function chain() {
       if (!IDX) R.s5 = { empty: 'network-topology index() returned null for the proof fixture' };
       else {
         const byName = node ? re.at(IDX, node.name) : undefined;
-        R.wires.name = {
+        R.wires.name = gate({
           id: 'name', from: 'stop 2 · nearest().point.name', to: 'stop 5 · rating-envelope at(index, key)',
           q: node ? { value: node.name, unit: 'site key (text)', meaning: 'name of the nearest mapped node' } : null,
           state: !node ? 'EMPTY' : byName ? 'ACCEPTED' : 'REFUSED', direct: '',
           reason: !node ? 'no mapped node was returned at stop 2'
             : byName ? 'at() found a site of that name in the rating fixture.'
               : `at(index, ${JSON.stringify(node.name)}) returned ${String(byName)}. The node comes from the nearest-search proof fixture and the rating-envelope proof fixture has no site of that name or code, so the two are not joined. The labels below belong to a stand-in fixture site chosen by the reader, drawn on its own busbar.`
-        };
+        });
         const kvW = R.wires.kv.out;
-        const opts = kvW ? { voltageKv: kvW.value } : undefined;
-        const result = re.at(IDX, S.site, opts);
-        R.wires.rkv = {
+        R.wires.rkv = gate({
           id: 'rkv', from: 'stop 4 · the kV that crossed the voltage wire', to: 'stop 5 · at(index, key, { voltageKv })',
-          q: kvW ? { value: kvW.value, unit: 'kV', meaning: 'nominal voltage' } : null, direct: '',
+          q: kvW ? { value: kvW.value, unit: 'kV', meaning: 'nominal voltage', basis: kvW.basis } : null, direct: '',
           state: kvW ? 'ACCEPTED' : 'EMPTY',
-          reason: kvW ? 'kV into voltageKv (kV): the module keeps only the stand-in site\'s nodes at that voltage.' : `the voltage wire is ${R.wires.kv.state}, so at() is called with no voltage and reads every voltage at the site; ${result ? result.scope : ''}`
-        };
+          reason: kvW ? `kV (basis ${kvW.basis}) into voltageKv (kV): the module keeps only the stand-in site's nodes at that voltage.` : ''
+        });
+        const opts = R.wires.rkv.state === 'ACCEPTED' ? { voltageKv: R.wires.rkv.q.value } : undefined;
+        const result = re.at(IDX, S.site, opts);
+        if (R.wires.rkv.state === 'EMPTY') R.wires.rkv.reason = `the voltage wire is ${R.wires.kv.state}, so at() is called with no voltage and reads every voltage at the site; ${result ? result.scope : ''}`;
+        else if (R.wires.rkv.unsound) R.wires.rkv.reason += ` at() is called with no voltage; ${result ? result.scope : ''}`;
         const amps = R.wires.amps && R.wires.amps.out;
-        R.wires.head = {
+        R.wires.head = gate({
           id: 'head', from: 'stop 4 · current (A)', to: 'stop 5 · circuit ratings (MVA)',
           q: amps ? { value: amps.value, unit: 'A', meaning: 'current implied by a stated power' } : null, direct: '',
           state: 'REFUSED',
           reason: `No comparison is made and no headroom is drawn. current-from-power.js: "${cfp ? cfp.NOT_A_HEADROOM : '(not loaded)'}" rating-envelope.js: "${re.NOT_A_CAPACITY}"`
-        };
+        });
         R.s5 = { re, topo, IDX, fx: fx.ok, result, opts, sites: fx.ok.product.sites.map(s => s.code) };
       }
     }
@@ -404,7 +466,7 @@ function drawSld(R) {
     });
     T(346, 71, 'per circuit · never summed · not a capacity', 'd', 'end');
     const nm = w.name;
-    if (nm) { L(40, 76, 40, 98, GREY, 1.5, '3 3'); T(48, 90, nm.state === 'REFUSED' ? 'REFUSED · at(node name) → null · not joined' : nm.state, 'rf'); }
+    if (nm) { L(40, 76, 40, 98, GREY, 1.5, '3 3'); T(48, 90, nm.state === 'REFUSED' ? (nm.unsound ? 'REFUSED · carried key not sound' : 'REFUSED · at(node name) → null · not joined') : nm.state, 'rf'); }
   } else if (n >= 5) {
     T(180, 36, `EMPTY · ${(R.s5 && R.s5.empty) || 'stop 5 has not run'}`.slice(0, 70), 'd', 'middle');
   } else {
@@ -527,7 +589,7 @@ function renderStop() {
   buildInputs(n, inputs);
   const bd = el('p', 'boundary', BOUNDARY);
   if (n === 2 || n === 3) bd.textContent = 'A distance is a distance: this reports the nearest mapped node to a point and how far away it is, never whether anything can be joined to it. ' + BOUNDARY;
-  card.append(el('h3', null, 'Results, as the modules return them'), bd);
+  card.append(el('h3', null, 'Results, as the modules return them'), bd, el('p', 'dim small', PRIMARY_ONLY));
   const res = el('ol', 'results'); res.id = 'res'; card.append(res);
   card.append(el('h3', null, 'Wires into and out of this stop'));
   const wires = el('ol', 'wires'); wires.id = 'wires'; card.append(wires);
@@ -593,7 +655,7 @@ function buildInputs(n, box) {
   if (n === 1) {
     slider(box, { key: 'heat', label: 'heat delivered per home', unit: 'kW thermal', min: 1, max: 20, step: 0.25, note: 'meaning thermal_output' });
     slider(box, { key: 'scop', label: 'SCOP', unit: '', min: 0.5, max: 6, step: 0.05, note: 'the module carries none; 1 or less is refused' });
-    slider(box, { key: 'div', label: 'after-diversity demand per home', unit: 'kW', min: 0.1, max: 8, step: 0.1, note: 'measured, never chosen by the module' });
+    slider(box, { key: 'div', label: 'after-diversity demand per home', unit: 'kW', min: 0.1, max: 8, step: 0.1, note: 'stated synthetic scenario assumption, not a measurement; the module chooses none' });
     slider(box, { key: 'units', label: 'homes with a heat pump', unit: 'units', min: 1, max: 100000, log: true, note: 'log scale' });
     seg(box, 'which quantity is put on the wire to the feeder', 'carry', [
       { v: 'after_diversity', label: 'after diversity' }, { v: 'nameplate', label: 'nameplate' }, { v: 'thermal_output', label: 'thermal output' }]);
@@ -626,7 +688,7 @@ function buildInputs(n, box) {
     slider(box, { key: 'pf', label: 'power factor', unit: '', min: 0.5, max: 1, step: 0.01, fmt: v => v.toFixed(2) });
     slider(box, { key: 'r', label: 'conductor resistance', unit: 'ohm/km', min: 0.01, max: 1, step: 0.01, note: 'the module carries no R or X' });
     slider(box, { key: 'x', label: 'conductor reactance', unit: 'ohm/km', min: 0, max: 0.5, step: 0.01 });
-    seg(box, 'phases', 'phases', [{ v: 'three', label: 'three' }, { v: 'single', label: 'single' }]);
+    seg(box, 'phases (three takes a line-to-line kV, single a line-to-neutral kV; the node declares line-to-line only, so single is refused on the joined wire)', 'phases', [{ v: 'three', label: 'three' }, { v: 'single', label: 'single' }]);
     seg(box, 'stated unit conversions on the wires (km→m, kVA→MVA, kV→V)', 'convert', [{ v: true, label: 'on' }, { v: false, label: 'off: see the refusals' }]);
   } else if (n === 5) {
     const siteBox = el('div'); siteBox.id = 'siteBox'; box.append(siteBox);
@@ -715,8 +777,8 @@ function fillWires(ol, list) {
     if (!w) continue;
     const li = el('li', 'wire ' + w.state.toLowerCase()); li.dataset.wire = w.id; li.dataset.state = w.state;
     li.append(el('div', 'ends', `${w.from}  →  ${w.to}`));
-    if (w.q) li.append(el('div', 'q', `carries: ${w.q.show || (typeof w.q.value === 'number' ? nf(w.q.value, 6) : w.q.value)} ${w.q.show ? '' : w.q.unit} · meaning "${w.q.meaning}"`.replace(/\s+·/, ' ·')));
-    if (w.accepts) li.append(el('div', 'q dim', `input takes: ${w.accepts.unit}${w.accepts.meanings ? ' · meaning ' + w.accepts.meanings.map(m => `"${m}"`).join(' or ') : ''}`));
+    if (w.q) li.append(el('div', 'q', `carries: ${w.q.show || (typeof w.q.value === 'number' ? nf(w.q.value, 6) : w.q.value)} ${w.q.show ? '' : w.q.unit} · meaning "${w.q.meaning}"${w.q.basis ? ` · basis ${w.q.basis}` : ''}`.replace(/\s+·/, ' ·')));
+    if (w.accepts) li.append(el('div', 'q dim', `input takes: ${w.accepts.unit}${w.accepts.meanings ? ' · meaning ' + w.accepts.meanings.map(m => `"${m}"`).join(' or ') : ''}${w.accepts.basis ? ` · basis ${w.accepts.basis}` + (w.id === 'kv' ? ` (phases "${S.phases}")` : '') : ''}`));
     if (w.direct) li.append(el('div', 'why', w.direct));
     const st = el('div', 'why'); st.append(el('span', 'st', w.state), ' ', w.reason); li.append(st);
     ol.append(li);
@@ -754,7 +816,7 @@ function paint() {
       const lw = wires.querySelector('[data-wire=load]');
       if (lw && S.stop < 4) lw.append(el('div', 'why dim', 'The receiving calculation runs at stop 4; the check above is made now, from what stop 1 returns.'));
     }
-    mach.textContent = `Machine detail · inputs: heat ${S.heat} kW (meaning thermal_output, scenario input), scop ${S.scop} (dimensionless, scenario input), perUnitAfterDiversity ${S.div} kW (meaning after_diversity, scenario input), units ${S.units} (count, scenario input) · outputs: electricalInputFromHeat → value kW, meaning electrical_input; fleetDemand → simultaneous {value kW, meaning nameplate, label}, diversified {value kW, meaning after_diversity, label, ratio}, never_added, not_computed, not_a_forecast; combinedPeak → value kW, meaning after_diversity, assumes · refusals: quantity refuses a value ≤ 0; electricalInputFromHeat refuses any meaning but thermal_output and scop ≤ 1; fleetDemand refuses a nameplate whose meaning is not nameplate or electrical_input, a unit mismatch, and after-diversity above nameplate; combinedPeak refuses any fleet without an after-diversity figure · source: ventus-grid-engine ${SRC.em.path} at ${COMMIT}.`;
+    mach.textContent = `Machine detail · inputs: heat ${S.heat} kW (meaning thermal_output, scenario input), scop ${S.scop} (dimensionless, scenario input), perUnitAfterDiversity ${S.div} kW (meaning after_diversity, a stated synthetic scenario assumption, not a measurement), units ${S.units} (count, scenario input) · outputs: electricalInputFromHeat → value kW, meaning electrical_input; fleetDemand → simultaneous {value kW, meaning nameplate, label}, diversified {value kW, meaning after_diversity, label, ratio}, never_added, not_computed, not_a_forecast; combinedPeak → value kW, meaning after_diversity, assumes · refusals: quantity refuses a value ≤ 0; electricalInputFromHeat refuses any meaning but thermal_output and scop ≤ 1; fleetDemand refuses a nameplate whose meaning is not nameplate or electrical_input, a unit mismatch, and after-diversity above nameplate; combinedPeak refuses any fleet without an after-diversity figure · source: ventus-grid-engine ${SRC.em.path} at ${COMMIT}.`;
   }
   if (n === 2) {
     const s = R.s2;
@@ -771,7 +833,7 @@ function paint() {
       fillList(res, items);
     }
     fillWires(wires, [w.loc, w.kv, w.name]);
-    mach.textContent = `Machine detail · inputs: points [{ name, voltages_kv [kV], location { lon °, lat ° } }] (the proof's fixture), lon ${S.lon}° and lat ${S.lat}° (decimal degrees, scenario input), minimumKv ${S.minKv} kV (floor on the highest declared voltage), limit (count) · outputs: { point, km } or null for limit 1, else an array sorted by km; km is haversine on EARTH_RADIUS_KM ${R.s2 && R.s2.radius || '(not loaded)'} km; point.voltages_kv in kV; point.location in degrees · refusals: none thrown; no eligible node returns null; a node with no voltages or below the floor is skipped; a point with no location is never searched · source: ventus-grid-engine ${SRC.ns.path} and ${SRC.geo9.path} at ${COMMIT}.`;
+    mach.textContent = `Machine detail · inputs: points [{ name, voltages_kv [kV], location { lon °, lat ° } }] (the proof's fixture), lon ${S.lon}° and lat ${S.lat}° (decimal degrees, scenario input), minimumKv ${S.minKv} kV (floor on the highest declared voltage), limit (count) · outputs: { point, km } or null for limit 1, else an array sorted by km; km is haversine on EARTH_RADIUS_KM ${R.s2 && R.s2.radius || '(not loaded)'} km; point.voltages_kv in kV with no stated line-neutral or service basis (carried as line-to-line on the stop 4 wire); point.location in degrees · refusals: on this valid fixed fixture (four nodes, each with a name, a voltages_kv array and a numeric location) nothing is thrown; no eligible node returns null; a node with no voltages or below the floor is skipped; a point with no location is never searched. The module has no guard on other input shapes (for example a non-array voltages_kv or a non-numeric location), so no "never refuses" claim is made beyond this fixture · source: ventus-grid-engine ${SRC.ns.path} and ${SRC.geo9.path} at ${COMMIT}.`;
     drawPlane(R);
   }
   if (n === 3) {
@@ -811,7 +873,7 @@ function paint() {
       ]);
     }
     fillWires(wires, [w.load, w.len, w.kv, w.mva, w.amps, w.nom]);
-    mach.textContent = `Machine detail · inputs: kw (kW real power, from the stop 1 wire, meaning after_diversity), powerFactor ${S.pf} (0 to 1, scenario input), kv (kV, from the stop 2 wire), mva (MVA, from apparentPowerKva via kVA→MVA), phases "${S.phases}", currentA (A), lengthM (m, from the stop 3 wire via km→m), resistanceOhmPerKm ${S.r} and reactanceOhmPerKm ${S.x} (ohm/km, scenario input), nominalVolts (V, via kV→V) · outputs: apparentPowerKva → kVA; reactivePowerKvar → kVAr; currentFromMvaAtKv → A with not_computed and not_a_headroom; voltageDropVolts → V with resistiveVolts, reactiveVolts; dropPercent → %; lossesWatts → W with conductors · refusals: every function throws on a non-finite or non-positive input, on a power factor outside (0, 1], and on phases other than "three" or "single"; no module chooses a voltage, a conductor, a limit or a cable · source: ventus-grid-engine ${SRC.pf.path}, ${SRC.cfp.path}, ${SRC.vd.path} at ${COMMIT}.`;
+    mach.textContent = `Machine detail · inputs: kw (kW real power, from the stop 1 wire, meaning after_diversity), powerFactor ${S.pf} (in the interval (0, 1], scenario input), kv (kV, basis line-to-line, from the stop 2 wire), mva (MVA, from apparentPowerKva via kVA→MVA), phases "${S.phases}" (current-from-power.js takes a line-to-line voltage for "three" and a line-to-neutral voltage for "single"; this call needs ${BASIS_OF_PHASES[S.phases]}; the joined wire carries line-to-line, so it is ${S.phases === 'three' ? 'ACCEPTED' : `REFUSED: ${NO_LN}`}), currentA (A), lengthM (m, from the stop 3 wire via km→m), resistanceOhmPerKm ${S.r} and reactanceOhmPerKm ${S.x} (ohm/km, scenario input), nominalVolts (V, basis line-to-line, via kV→V) · outputs: apparentPowerKva → kVA; reactivePowerKvar → kVAr; currentFromMvaAtKv → A with not_computed and not_a_headroom; voltageDropVolts → V with resistiveVolts, reactiveVolts; dropPercent → %; lossesWatts → W with conductors · refusals, as the module source states them: a TypeError for any input that is not a finite number; a RangeError at zero or below for kw, powerFactor, mva, kv, currentA, lengthM, resistanceOhmPerKm, dropVolts and nominalVolts (each must be greater than zero); reactanceOhmPerKm is checked as non-negative, so X = 0 is accepted and only X below zero throws; powerFactor must lie in the interval (0, 1]: greater than 0 and at most 1; phases other than "three" or "single" throw a RangeError; before any call, every wire on this page refuses a non-finite value; no module chooses a voltage, a conductor, a limit or a cable · source: ventus-grid-engine ${SRC.pf.path}, ${SRC.cfp.path}, ${SRC.vd.path} at ${COMMIT}.`;
   }
   if (n === 5) {
     const s = R.s5;
@@ -847,7 +909,8 @@ function publish(R) {
   const w = {};
   for (const [k, v] of Object.entries(R.wires)) if (v) w[k] = v.state;
   window.__journey = {
-    stop: S.stop, queuePeak: queue.peak, status: Object.fromEntries(Object.entries(RT).map(([k, v]) => [k, v.status])), wires: w,
+    stop: S.stop, phases: S.phases, nan: S.nan, queuePeak: queue.peak,
+    reasons: Object.fromEntries(Object.entries(R.wires).filter(([, v]) => v).map(([k, v]) => [k, v.reason])), status: Object.fromEntries(Object.entries(RT).map(([k, v]) => [k, v.status])), wires: w,
     s1: R.s1 && R.s1.fleet && R.s1.fleet.ok ? { diversifiedKw: R.s1.fleet.ok.diversified.value, meaning: R.s1.fleet.ok.diversified.meaning } : null,
     s2: R.s2 && R.s2.best ? { name: R.s2.best.point.name, km: R.s2.best.km } : null,
     s3: R.s3 && !R.s3.empty ? { straight: R.s3.straight, corridor: R.s3.corridor && R.s3.corridor.km } : null,
