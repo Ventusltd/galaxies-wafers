@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Chemistry Ledger</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="cl.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>CHEMISTRY LEDGER</h1>
+    <p class="dim">star-maker drove compositions of parts in a browser and recorded each as a star. A <b>compound</b> is one composition; its <b>elements</b> are the parts in it (a cartridge by symbol, with a version stamp when one was pinned). A compound <b>decays</b> when it produces an exception. Every number below is counted by this page from the published files when you open the ledger.</p>
+    <p id="summary" class="summary">WAIT — nothing is fetched until you open the ledger.</p>
+  </header>
+
+  <section class="layers" aria-label="Layers">
+    <label class="layer"><input type="checkbox" id="open-ledger"><span id="lbl-ledger">Ledger · compounds.json + CHEMISTRY.md [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" id="open-graph"><span id="lbl-graph">Graph · graph.json edges [WAIT]</span></label>
+  </section>
+
+  <h2>ELEMENTS</h2>
+  <div class="seg" id="mode" role="group" aria-label="Show">
+    <button type="button" data-m="all" aria-pressed="true">all counts</button>
+    <button type="button" data-m="noble" aria-pressed="false">noble</button>
+    <button type="button" data-m="radioactive" aria-pressed="false">radioactive</button>
+  </div>
+  <p id="rule" class="rule small dim">Rules are read from CHEMISTRY.md when the ledger opens.</p>
+  <p class="dim small">Each cell: element · compositions it appears in · compositions with a green star / with a red star.</p>
+  <div id="grid" class="grid"><p class="dim">WAIT — tick Ledger.</p></div>
+
+  <section id="card" class="card" aria-live="polite">
+    <p class="dim">Tap an element to read its failure messages and its compounds.</p>
+  </section>
+
+  <h2>GRAPH · <span id="graphcount">not loaded</span></h2>
+  <div class="plane">
+    <canvas id="plane" aria-label="Chemistry graph. Elements on the outer ring, decay messages inside. Tap a node to read it."></canvas>
+    <div id="drawn" class="drawn dim"></div>
+  </div>
+  <p class="dim small">Outer ring: element nodes of graph.json, sorted by label. Inner ring: its decay nodes. Faint solid lines: UNSTABLE_WITH. Dashed lines: DECAYS_TO. Only edges whose two ends are both nodes in the file are drawn.</p>
+
+  <details id="questions" class="questions">
+    <summary>Questions</summary>
+    <dl>
+      <dt>1. How does this help draw a system or a single-line diagram?</dt>
+      <dd>It draws no busbar, feeder, transformer, cable route, protection or earthing. It feeds the <b>single-line panel</b> indirectly: it shows which compositions of parts let the sld-sandbox cartridge (<b>Ss</b>, the part that draws the SLD panel) run. Counted from <code>compounds[].decays[].text</code>: the text <q>sld-sandbox requires the sld-styles module</q> appears in <span id="q-styles">not yet known</span>, and <q>grid-scope requires the geodesy module</q> in <span id="q-geo">not yet known</span>. Iteration 37 stated 702 compositions for the first; this page recounts it: <span id="q-verify">not yet known</span>.</dd>
+      <dt>2. What is this code used for?</dt>
+      <dd>This page: <code>ledger.mjs</code> <code>parts</code>, <code>splitElement</code>, <code>countElements</code>, <code>readRules</code>, <code>isNoble</code>, <code>isRadioactive</code>, <code>drawableEdges</code>, <code>decayTotals</code>, <code>layout</code>; drawn by <code>app.mjs</code>. It reads star-maker <code>chemistry/compounds.json</code>, <code>chemistry/graph.json</code> and <code>CHEMISTRY.md</code> at commit <span class="pin" id="q-pin"></span>, files star-maker writes by arithmetic over its recorded stars (CHEMISTRY.md line 3: <q>No model — arithmetic over the sky</q>). Noble and radioactive are not fields in the JSON files; the rules are read from CHEMISTRY.md headings at run time: <span id="q-rules">not yet known</span>.</dd>
+      <dt>3. Where does it lead next?</dt>
+      <dd>To <a href="../37-hidden-wires/">iterations/37-hidden-wires</a>, which draws each decay text as a wire from the failing part to the module it names, and checks whether the register now declares it. Radioactive elements found here: <span id="q-rad">not yet known</span>.</dd>
+    </dl>
+  </details>
+  <p id="machine" class="machine small">Machine detail · not yet known: tick Ledger.</p>
+  <footer class="dim small">Source: star-maker, public repository, pinned commit shown above. Screening-grade record of software compositions; it says nothing about any electrical asset.</footer>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
