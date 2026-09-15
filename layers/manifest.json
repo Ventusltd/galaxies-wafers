@@ -116,11 +116,11 @@
    "preload": false,
    "colour": "#9d4edd",
    "evidence": "files[] in the live register with repo Ventusltd/ventus-grid-engine at index.html or spider/",
-   "note": "The grid engine's spider, a two-parameter shell (graph, focus). It ships empty because the register has no block for it; the emptiness is the finding, recorded in stats.why.",
+   "note": "The grid engine's spider, whose module accepts two URL parameters (graph, focus). It ships empty because the inspected register records no block for it; the reason is shown on its row. Empty here means not anchored in these records, not absent from the estate.",
    "file": "layers/spider.json",
-   "bytes": 1915,
+   "bytes": 2185,
    "features": 0,
-   "sha256": "6e56560b46e26f63c2cb073ec47d91d0399ec1977e00b7aa3dab9c5f55c03d60"
+   "sha256": "e3c13a5d632012fe411a3edac570826ccad7923ba44d03ec012de7cd5c817450"
   },
   {
    "id": "module-Ga",

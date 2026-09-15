@@ -88,6 +88,25 @@ const ctx = overlay.getContext('2d');
 
 $('layersToggle').addEventListener('click', () => { $('layersBody').hidden = !$('layersBody').hidden; });
 
+/* Why a layer is EMPTY, in the layer's own words. Builders record it under
+   stats.why (the MSI builders) or stats.reason; a layer that found things in
+   source it could not anchor lists them under stats.unanchored. Scope and index
+   limits follow, because an empty result is only as wide as what was searched.
+   With none of these the page says so rather than inventing a reason. */
+function emptyReason(st) {
+  if (!st) return 'loaded; the layer holds no features and records no reason';
+  const parts = [];
+  if (typeof st.why === 'string') parts.push(st.why);
+  else if (typeof st.reason === 'string') parts.push(st.reason);
+  if (Array.isArray(st.unanchored) && st.unanchored.length) {
+    const r = st.unanchored[0].from_reason || st.unanchored[0].reason || 'no anchor established';
+    parts.push(`${st.unanchored.length} found in source, none anchored to a numbered line (${r.replace(/-/g, ' ')})`);
+  }
+  if (typeof st.scope === 'string') parts.push('scope: ' + st.scope);
+  if (typeof st.index_limit === 'string') parts.push('limit: ' + st.index_limit);
+  return parts.length ? parts.join(' · ') : 'loaded; the layer holds no features and records no reason';
+}
+
 function row(l) {
   const s = state.get(l.id) || { status: 'WAIT' };
   const why = s.why ? ` · ${esc(s.why)}` : '';
@@ -193,7 +212,7 @@ async function toggle(l, on) {
         s.doc = await r.json();
       }
       s.status = s.doc.features.length ? 'OK' : 'EMPTY';
-      if (!s.doc.features.length) s.why = 'loaded; the layer holds no features';
+      if (!s.doc.features.length) s.why = emptyReason(s.doc.stats);
     } catch (e) { s.status = 'FAIL'; s.why = e.message; }
     s.loading = false;
   }

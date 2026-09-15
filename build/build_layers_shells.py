@@ -129,16 +129,18 @@ def layer_spider(E, doc, reg_src):
     n = len(doc["blocks"])
     why = (f"Searched all {n} blocks of the live register ({BL.BLOCKS_URL}, generated "
            f"{doc.get('generated_utc')}) for files[] with repo {SPIDER_REPO} and path index.html or a path "
-           f"under spider/. None matched: the register does not know the spider, so no key can be placed "
-           f"without inventing one.")
+           f"under spider/. None matched, so no matching anchor is established in the inspected register records "
+           f"and no key can be placed without inventing one. This is not evidence that the spider is absent from "
+           f"the estate: only that this register, at this generation, does not record it.")
     return BL.write_layer(
         {"id": "spider", "label": "The spider", "group": "THE WORKING MODULES", "preload": False,
          "colour": "#b39ddb",
          "evidence": f"files[] in the live register with repo {SPIDER_REPO} at index.html or spider/",
-         "note": "The grid engine's spider, a two-parameter shell (graph, focus). It ships empty because the "
-                 "register has no block for it; the emptiness is the finding, recorded in stats.why."},
+         "note": "The grid engine's spider, whose module accepts two URL parameters (graph, focus). It ships "
+                 "empty because the inspected register records no block for it; the reason is shown on its row. "
+                 "Empty here means not anchored in these records, not absent from the estate."},
         [], {"features": 0, "blocks_searched": n, "repo": SPIDER_REPO, "paths": SPIDER_PATHS,
-             "why": why, "shell": SPIDER_SHELL}, E["sources"] + [reg_src])
+             "why": why, "module_contract_parameters": SPIDER_SHELL}, E["sources"] + [reg_src])
 
 
 def main() -> int:
