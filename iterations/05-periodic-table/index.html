@@ -7,6 +7,7 @@
 <title>The Line Wafer — the periodic table of blocks, on the numbered surface</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="questions.css">
 </head>
 <body>
 
@@ -15,6 +16,7 @@
 <header id="bar">
   <span id="wordmark">THE LINE WAFER · PERIODIC TABLE</span>
   <span id="count" class="dim">loading the numbered database…</span>
+  <details id="questions"><summary>Questions</summary><dl id="qlist"></dl><p id="machine" class="dim"></p></details>
 </header>
 
 <form id="beam" autocomplete="off">
@@ -39,5 +41,6 @@
 <script type="module" src="app.mjs"></script>
 <script type="module" src="layers-panel.mjs"></script>
 <script type="module" src="table.mjs"></script>
+<script type="module" src="questions.mjs"></script>
 </body>
 </html>

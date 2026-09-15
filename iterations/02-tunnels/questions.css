@@ -1,0 +1,11 @@
+/* The Questions panel, collapsed by default. Markup and look from
+   iterations/22-fast-zoom (index.html #questions, style.css). It sits last in the
+   top bar and stops short of the LAYERS button on the right. */
+#questions{order:9; flex-basis:100%; max-width:min(26rem,calc(100% - 5.5rem)); pointer-events:auto; font-size:10.5px; line-height:1.45}
+#questions summary{cursor:pointer; color:var(--beam,#5ec8f2); letter-spacing:.08em; width:max-content}
+#questions[open]{background:#0e121bf2; border:1px solid var(--edge,#1b2030); border-radius:8px; padding:.4rem .55rem; max-height:45vh; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain}
+#questions dl{margin:.35rem 0 0}
+#questions dt{color:var(--ink,#d8dee9); margin-top:.35rem}
+#questions dd{margin:.1rem 0 0; color:var(--dim,#8b93a7); overflow-wrap:anywhere}
+#questions a{color:var(--beam,#5ec8f2)}
+#questions #machine{margin:.45rem 0 0; overflow-wrap:anywhere}

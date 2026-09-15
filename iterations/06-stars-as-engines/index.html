@@ -6,6 +6,7 @@
 <meta name="color-scheme" content="dark">
 <title>Stars as Engines — the Line Wafer under ten laws</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="questions.css">
 </head>
 <body>
 
@@ -14,6 +15,7 @@
 <header id="bar">
   <span id="wordmark">THE LINE WAFER</span>
   <span id="count" class="dim">loading the numbered database…</span>
+  <details id="questions"><summary>Questions</summary><dl id="qlist"></dl><p id="machine" class="dim"></p></details>
 </header>
 
 <form id="beam" autocomplete="off">
@@ -37,5 +39,6 @@
 
 <script type="module" src="app.mjs"></script>
 <script type="module" src="layers-panel.mjs"></script>
+<script type="module" src="questions.mjs"></script>
 </body>
 </html>
