@@ -1,0 +1,13 @@
+# Layer visibility
+
+A bounded comparison of current and proposed code-layer marks on a dark ground. Select one layer, load its geometry, and compare all-issued-space, fitted and first-key camera views. All 201 entries are available; the style table loads no geometry. Empty layers remain empty. Two geometry layers at most are retained in the page cache.
+
+Source: `Ventusltd/galaxies-wafers` at `be62c82b9ffebeaa9b1152a7e7fae1658b585d4b`. The unchanged `wafer.mjs` maps issued code keys. `catalog.json` is a geometry-only projection of that source: all 47,236 features were counted, every key checked against the existing pinned issued-key column, and all source JSON byte hashes verified during export. Original feature properties are not copied or evaluated. The browser verifies the catalogue and each selected geometry digest before drawing.
+
+Current style is the source overlay's one-CSS-pixel stroke and two-by-two square, with layer alpha0.55 for declared line layers and0.8 otherwise. Proposed style uses opaque source colours, two-pixel strokes, four-pixel point radii and an optional one-pixel casing band. These sizes are project policy, not a WCAG requirement. The original iteration10 and its physical ground-map pane are not edited or reproduced; this is an independent style comparison using the same frozen key law and overlay style rules, not an exact runtime replay of its shader.
+
+Contrast uses unrounded sRGB source-over compositing followed by relative luminance. Source shader ground channels are0.043/0.051/0.071; canvas output is quantized by the browser. Black casing's outer boundary does not meet3:1 against that dark ground; the coloured core is separately reported. White casing can fail against bright carried-point centres. No universal readability or conformance claim is made. Antialiasing, overlaps, perception and actual phone conditions remain separate checks.
+
+The exported `bond.visibility-style.v1` JSON preserves layer IDs and colours and records all named comparison contexts. Counts are computed from the validated catalogue. Metadata style evaluation is not proof that all201geometries rendered simultaneously. No electrical calculation, physical network, new grid dataset, source-body editor or runtime-call inference is supplied.
+
+JavaScript modules are relative and the directory can be remapped intact. `model.test.mjs` checks the pure model and all geometry identities/hashes; `browser-check.mjs` exercises this exact page at390x844 and1400x900 in Chromium and WebKit. Browser receipt availability and actual outcomes are recorded separately, never inferred from the presence of the test file.

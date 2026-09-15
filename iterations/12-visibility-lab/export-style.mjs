@@ -1,0 +1,13 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {exportVisibility} from './visibility-style.mjs';
+import {validateCatalog,CATALOG_SHA256} from './model.mjs';
+const raw=await readFile(new URL('./catalog.json',import.meta.url));
+if(createHash('sha256').update(raw).digest('hex')!==CATALOG_SHA256)throw Error('Catalogue pin mismatch');
+const catalog=validateCatalog(JSON.parse(raw));
+const output=exportVisibility(catalog,{casing:'dark',pointRadiusCssPx:4,strokeCssPx:2});
+output.provenance=catalog.source;
+output.geometry_projection='catalog.json; feature counts independently checked during export; geometry fetched only on selection';
+const bytes=JSON.stringify(output,null,2)+'\n';
+await writeFile(process.argv[2]||new URL('./visibility-style.json',import.meta.url),bytes,{flag:'wx'});
+console.log(JSON.stringify({layers:output.rows.length,bytes:Buffer.byteLength(bytes),sha256:createHash('sha256').update(bytes).digest('hex')}));

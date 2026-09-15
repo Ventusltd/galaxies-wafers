@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Compare pinned code-layer geometry, stroke sizes and contrast on a dark substrate.">
+<title>Layer visibility · Code geometry</title>
+<link rel="stylesheet" href="style.css">
+<header><span class="eyebrow">CODE GEOMETRY / VISIBILITY</span><h1>Make a layer legible.</h1><p>Same issued keys. Same colours. Compare the marks, not a new layout.</p></header>
+<main>
+<p id="failure" role="alert" hidden></p>
+<section class="controls" aria-label="Layer and view controls">
+<label>Layer<select id="layer" disabled><option>Reading catalogue…</option></select></label>
+<div id="priorities" class="chips"></div>
+<button id="load" disabled>Load selected layer</button>
+<div class="settings"><label>Camera<select id="camera"><option value="home">All issued space</option><option value="fit">Fit this layer</option><option value="near">First key · zoom 9</option></select></label><label>Proposed casing<select id="casing"><option value="dark">Black outline</option><option value="light">White comparison</option><option value="none">No casing</option></select></label></div>
+<p id="counts" role="status">Reading catalogue…</p>
+</section>
+<section class="plots" aria-label="Current and proposed geometry">
+<figure><figcaption><strong>Current</strong><span>1 px lines · 2 × 2 px points</span></figcaption><canvas id="current" aria-label="Current layer geometry"></canvas></figure>
+<figure><figcaption><strong>Proposed</strong><span>2 px lines · 4 px point radius</span></figcaption><canvas id="proposed" aria-label="Proposed layer geometry"></canvas></figure>
+</section>
+<p id="geometry-status" role="status">Choose a layer to load its geometry. Unselected keys stay dark.</p>
+<div class="readings"><div><span>Current core / ground</span><strong id="current-ratio">—</strong></div><div><span>Proposed core / ground</span><strong id="proposed-ratio">—</strong></div><div><span>Proposed outer boundary / ground</span><strong id="boundary-ratio">—</strong></div></div>
+<p id="style-limit" class="note"></p>
+<p class="note">Sizes are a project policy in CSS pixels. The 3:1 comparison is a full-coverage pixel model—not a readability guarantee or a WCAG conformance claim. Zoom changes placement, not mark sizes. Colours encode source layers, never verdicts.</p>
+<details id="feature-card"><summary>Selected geometry</summary><pre id="feature-detail">Tap a charted point to inspect its key and source feature. This view does not contain source-code bodies.</pre></details>
+<details id="table-panel"><summary>All-layer style table <span id="table-count"></span></summary><p>Metadata only: opening this table does not load layer geometry.</p><div class="table-scroll"><table><thead><tr><th>Layer</th><th>Features</th><th>Current core / ground</th><th>Proposed core / ground</th></tr></thead><tbody id="rows"></tbody></table></div></details>
+<p><button id="export" disabled>Download style JSON</button> <a href="visibility-style.json">Default style JSON</a> · <a href="catalog.json">Geometry catalogue</a></p>
+<details><summary>Questions</summary><h2>How does this help draw a system or an SLD?</h2><p>It tests whether a code-layer point or route can be distinguished. It draws no busbar, feeder, transformer, protection or earthing element. <code>features[].keys</code> feeds frozen <code>place(key)</code>; these are code addresses, not electrical coordinates.</p><h2>What is this code used for?</h2><p><code>currentStyle</code>, <code>proposedStyle</code> and <code>measureStyle</code> provide the style model; this page calls them directly. Baseline widths and opacity come from <a id="overlay-source">layers-panel.mjs / drawOverlay</a>. Placement comes from unchanged <a id="wafer-source">wafer.mjs / place</a>. Other callers have not been established here; module titles do not prove runtime calls.</p><h2>Where does it lead next?</h2><p>The exported JSON can feed a layer renderer by layer ID. No live renderer integration, complete module coverage, or key-to-source-body mapping is established by this comparison. Antialiasing, overlap, bright substrate points and physical phone conditions need separate review.</p></details>
+<details><summary>Machine detail</summary><p id="machine">Loading source identity…</p><p>Refusals: unknown layer, malformed geometry, unissued keys during export, mismatched file digest or feature count. Empty layers create no marks. Geometry is loaded only on selection, one request at a time; obsolete requests are cancelled. No all-layer geometry preload.</p><p><a href="README.md">Method and limits</a> · <a href="https://www.w3.org/WAI/WCAG22/understanding/non-text-contrast.html">Graphical contrast reference</a></p></details>
+</main><script type="module" src="app.mjs"></script>
+</html>
