@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Galaxies Wafers — every version</title>
+<style>
+:root{--ink:#d8dee9;--dim:#8b93a7;--ground:#0b0d12;--edge:#1b2030;--lit:#ffd54a;--beam:#5ec8f2;--hot:#ff2bd6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  padding:calc(env(safe-area-inset-top,0px) + 1rem) 1rem calc(env(safe-area-inset-bottom,0px) + 2rem);-webkit-text-size-adjust:100%}
+main{max-width:46rem;margin:0 auto}
+h1{font-size:13px;letter-spacing:.14em;font-weight:600;margin:0 0 .25rem}
+.dim{color:var(--dim)}
+nav{display:flex;flex-wrap:wrap;gap:.5rem;margin:.75rem 0 1.25rem}
+nav a{border:1px solid var(--edge);border-radius:.4rem;padding:.35rem .6rem;color:var(--beam);text-decoration:none}
+ol{list-style:none;margin:0;padding:0;display:grid;gap:.6rem}
+li a.card{display:block;border:1px solid var(--edge);border-radius:.5rem;padding:.7rem .8rem;color:inherit;text-decoration:none;background:#10131b}
+li a.card:active,li a.card:hover{border-color:var(--beam)}
+.n{color:var(--lit);font-weight:600;margin-right:.4rem}
+.t{font-size:14px}
+.meta{font-size:11.5px;color:var(--dim);margin-top:.3rem;overflow-wrap:anywhere}
+.src{color:var(--hot)}
+.new{border-color:var(--hot)!important}
+.state{font-size:12px;margin:.5rem 0 1rem}
+footer{margin-top:2rem;font-size:11.5px;color:var(--dim)}
+</style>
+</head>
+<body>
+<main>
+<h1>GALAXIES WAFERS · EVERY VERSION</h1>
+<div class="dim">Newest first. Each card opens that version. Counts and dates are read from the repository when this page loads.</div>
+<nav>
+  <a href="../">The Line Wafer</a>
+  <a href="../atlas/">The Ground</a>
+  <a href="../proof/layers.html">Layer proofs</a>
+  <a href="https://github.com/Ventusltd/galaxies-wafers">Source</a>
+</nav>
+<div id="state" class="state dim">loading iterations/index.json…</div>
+<ol id="list"></ol>
+<footer>
+Illustrative physics and code drawn by a computer from published data. Not an engineering design or a certified calculation.
+Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.
+</footer>
+</main>
+<script type="module">
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const when = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toISOString().replace('T', ' ').slice(0, 16) + ' UTC'; };
+
+function card(r, isNew) {
+  const src = r.source ? `<div class="meta src">copied from ${esc(r.source.repo)} ${esc(r.source.path)} at ${esc((r.source.sha || '').slice(0, 7))}</div>` : '';
+  const commit = r.commit ? `${esc(r.commit.slice(0, 7))} · ${esc(when(r.committed))}` : 'not yet indexed';
+  return `<li><a class="card${isNew ? ' new' : ''}" href="${encodeURIComponent(r.dir)}/">
+    <div class="t"><span class="n">${esc(String(r.n).padStart(2, '0'))}</span>${esc(r.title)}</div>
+    <div class="meta">${commit}${r.subject ? ' · ' + esc(r.subject) : ''}</div>${src}</a></li>`;
+}
+
+(async () => {
+  let idx;
+  try {
+    const res = await fetch('index.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    idx = await res.json();
+  } catch (e) {
+    $('state').textContent = 'FAIL · iterations/index.json could not be read: ' + e.message;
+    return;
+  }
+  const rows = [...idx.iterations].sort((a, b) => b.n - a.n);
+  $('list').innerHTML = rows.map(r => card(r, false)).join('');
+  $('state').textContent = `OK · ${rows.length} versions in the index`;
+
+  /* Versions pushed after the index was last built: ask GitHub for the directory
+     list once. If that fails (offline, rate limit) the index above still stands. */
+  try {
+    const res = await fetch('https://api.github.com/repos/Ventusltd/galaxies-wafers/contents/iterations?ref=main');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const known = new Set(idx.iterations.map(r => r.dir));
+    const extra = (await res.json()).filter(x => x.type === 'dir' && /^\d+-/.test(x.name) && !known.has(x.name))
+      .map(x => ({ n: parseInt(x.name, 10), dir: x.name, title: x.name.replace(/^\d+-/, '').replace(/-/g, ' ') }));
+    if (extra.length) {
+      $('list').insertAdjacentHTML('afterbegin', extra.sort((a, b) => b.n - a.n).map(r => card(r, true)).join(''));
+      $('state').textContent = `OK · ${rows.length} versions in the index · ${extra.length} newer on main, not yet indexed (pink)`;
+    }
+  } catch (e) {
+    $('state').textContent += ' · live check skipped: ' + e.message;
+  }
+})();
+</script>
+</body>
+</html>

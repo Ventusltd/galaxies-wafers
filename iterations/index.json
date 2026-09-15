@@ -1,0 +1,96 @@
+{
+ "schema": "galaxies-wafers.iterations.v1",
+ "count": 10,
+ "iterations": [
+  {
+   "n": 1,
+   "dir": "01-route-alpha",
+   "slug": "route-alpha",
+   "title": "Route Alpha — The Line Wafer, dense modules translucent",
+   "commit": "29c0fb4448fac327ea213bb9e32cb6830f775c05",
+   "committed": "2026-09-15T17:48:24+01:00",
+   "subject": "iteration 01 route alpha: routes stroked at scale/sqrt(features), 0.6 px, ?alpha= scales"
+  },
+  {
+   "n": 2,
+   "dir": "02-tunnels",
+   "slug": "tunnels",
+   "title": "Tunnels — the same line, far apart on the wafer",
+   "commit": "4cc78dea256a63b2941787cb67b52f59c69ed52c",
+   "committed": "2026-09-15T17:49:09+01:00",
+   "subject": "iteration 02 tunnels: 3,000 arcs where one line joins far regions of the numbering"
+  },
+  {
+   "n": 3,
+   "dir": "03-code-particle",
+   "slug": "code-particle",
+   "title": "Code Particle — tap a line, read its code",
+   "commit": "e38ba10d5ef7fc71daae4861879f1e2bbfe7bfac",
+   "committed": "2026-09-15T17:53:12+01:00",
+   "subject": "iterations/03-code-particle: tap a line, its real code block opens in the panel"
+  },
+  {
+   "n": 4,
+   "dir": "04-400kv-engine",
+   "slug": "400kv-engine",
+   "title": "400kV Engine Mode — module routes restyled as grid voltage",
+   "commit": "ec3b9641b10148d1a690a9fa633fd1b982935221",
+   "committed": "2026-09-15T17:50:39+01:00",
+   "subject": "iterations/04: 400kV engine mode â€” module routes restyled as grid voltage"
+  },
+  {
+   "n": 5,
+   "dir": "05-periodic-table",
+   "slug": "periodic-table",
+   "title": "The Line Wafer — the periodic table of blocks, on the numbered surface",
+   "commit": "5a6bb0dcd2aa0cd5f2ee46acd85f945b2de2970a",
+   "committed": "2026-09-15T17:53:11+01:00",
+   "subject": "iterations/05-periodic-table: the periodic table on the wafer"
+  },
+  {
+   "n": 6,
+   "dir": "06-stars-as-engines",
+   "slug": "stars-as-engines",
+   "title": "Stars as Engines — the Line Wafer under ten laws",
+   "commit": "b9664ee27081b5b8f6d0914076e4692162d7d073",
+   "committed": "2026-09-15T17:51:39+01:00",
+   "subject": "iteration 06: stars as engines â€” the Ten Laws drive the wafer and its layers"
+  },
+  {
+   "n": 7,
+   "dir": "07-code-card",
+   "slug": "code-card",
+   "title": "The Line Wafer — every numbered line of the estate, on one surface",
+   "commit": "dd20a5c7162a10cd021460fa5958cf92df09ea5d",
+   "committed": "2026-09-15T18:00:14+01:00",
+   "subject": "iteration 07: the code card and brightness by association"
+  },
+  {
+   "n": 8,
+   "dir": "08-space-and-time",
+   "slug": "space-and-time",
+   "title": "Space and Time — the Line Wafer with its clock",
+   "commit": "f5de7a85cb235d43247a337b3e13a6cc08a9c0c4",
+   "committed": "2026-09-15T18:10:13+01:00",
+   "subject": "labels: the clock is a discovery position; unknown layer ids in the URL are named, not dropped silently"
+  },
+  {
+   "n": 9,
+   "dir": "09-deeplink-receiver",
+   "slug": "deeplink-receiver",
+   "title": "The Line Wafer — iteration 09, the deep-link receiver",
+   "commit": "a80a5b66b3fb7d06687f564bcaa8170d28eeb376",
+   "committed": "2026-09-15T17:53:21+01:00",
+   "subject": "iteration 09: the deep-link receiver â€” the page reads its URL only through the engine's parseDeepLink"
+  },
+  {
+   "n": 10,
+   "dir": "10-ground-bridge",
+   "slug": "ground-bridge",
+   "title": "The Ground Bridge — the wafer and the ground, one tap apart",
+   "commit": "0ac07784b462b590864ee426cd4fc413b8d6f2a9",
+   "committed": "2026-09-15T17:54:16+01:00",
+   "subject": "iteration 10, the ground bridge: 5,800 substations, 7,680 projects, 187 module routes on the wafer"
+  }
+ ]
+}
