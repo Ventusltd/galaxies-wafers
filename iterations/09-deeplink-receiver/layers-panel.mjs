@@ -245,11 +245,24 @@ function writeLayersToURL() {
     history.replaceState(history.state, '', next);
 }
 
+/* A link that carries layers but no line is not a deep link to a line, so the
+   receiver refuses it as one, but its layers are still a plain request the root
+   page honours. Earlier this page left them silently in WAIT; now they load and
+   the card says the line was missing. Any other refusal (malformed line, bad
+   zoom) still loads nothing, as before. */
+function requestedLayers() {
+  if (LINK.ok) return LINK.layers ?? null;
+  if (!/^missing /.test(LINK.why || '')) return null;
+  const raw = new URL(location.href).searchParams.get('layers');
+  return raw ? [...new Set(raw.split(',').map(x => x.trim()).filter(Boolean))] : null;
+}
+
 function readLayersFromURL() {
-  if (!manifest || !LINK.ok || !LINK.layers) return;
+  const asked = manifest && requestedLayers();
+  if (!asked) return;
   const known = new Map(manifest.layers.map(l => [l.id, l]));
-  const wanted = LINK.layers.filter(id => known.has(id));
-  const dropped = LINK.layers.filter(id => !known.has(id));
+  const wanted = asked.filter(id => known.has(id));
+  const dropped = asked.filter(id => !known.has(id));
   reportLayers({ ticked: wanted, dropped });
   for (const id of wanted) state.get(id).on = true;     /* mark all first, so each write keeps the rest */
   writeLayersToURL();
@@ -416,7 +429,7 @@ function inspect(hit) {
     renderPanel();
     readLayersFromURL();
   } catch (e) {
-    if (LINK.ok && LINK.layers) reportLayers({ ticked: [], dropped: [], failed: 'unavailable: ' + e.message });
+    if (requestedLayers()) reportLayers({ ticked: [], dropped: [], failed: 'unavailable: ' + e.message });
     $('layersList').innerHTML = `<div class="lnote">Layers unavailable: ${esc(e.message)}. The wafer itself is unaffected.</div>`;
   }
 })();

@@ -1,9 +1,10 @@
 /* One browser job: load a served page, let its requested layers settle, zoom it
  * for three seconds, and record what happened. Fails on any page error, any
- * failed same-site request, or any requested layer that ends in FAIL.
+ * failed same-site request, or any requested layer that does not end OK or EMPTY
+ * within 45 seconds (a layer left in WAIT is a failure, not a pass).
  * Environment: PAGE (path under BASE), SIZE (phone | desktop), BASE. */
 import fs from 'node:fs';
-import puppeteer from 'puppeteer';
+import { judge } from './judge.mjs';
 
 const { PAGE = '', SIZE = 'phone', BASE = 'https://ventusltd.github.io/galaxies-wafers/' } = process.env;
 const url = BASE + PAGE;
@@ -12,6 +13,7 @@ const viewport = SIZE === 'phone'
   : { width: 1400, height: 900, deviceScaleFactor: 1 };
 
 const out = { url, size: SIZE, started: new Date().toISOString(), errors: [], failedRequests: [] };
+const { default: puppeteer } = await import('puppeteer');
 const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
@@ -66,8 +68,7 @@ try {
 } finally {
   await browser.close();
 }
-out.failedLayers = Object.entries(out.layers ?? {}).filter(([, s]) => s === 'FAIL').map(([id]) => id);
-out.pass = !out.errors.length && !out.failedRequests.length && !out.failedLayers.length;
+Object.assign(out, judge(out));
 fs.writeFileSync('smoke-result.json', JSON.stringify(out, null, 1));
 console.log(JSON.stringify(out, null, 1));
 process.exit(out.pass ? 0 : 1);

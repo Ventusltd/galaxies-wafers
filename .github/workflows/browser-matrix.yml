@@ -34,6 +34,8 @@ jobs:
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: 20
+      - name: verdict fixtures
+        run: node proof/browser/judge.check.mjs
       - name: install puppeteer
         run: npm i --no-save --no-audit --no-fund puppeteer@23.11.1
       - name: smoke
