@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="color-scheme" content="dark">
+<title>Assembly — lines into functions, functions into elements, elements into apps, and in action</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header id="bar">
+  <div id="brand"><span id="wordmark">ASSEMBLY</span> <span id="counts" class="dim">nothing loaded until a level is viewed</span></div>
+  <form id="search" autocomplete="off">
+    <input id="q" spellcheck="false" autocapitalize="off" placeholder="block:Gc · family:80299 · line:193185 · surface:…" aria-label="a permanent key to fly to">
+    <button type="submit">FLY</button>
+  </form>
+</header>
+
+<nav id="rail" aria-label="assembly level">
+  <button type="button" data-level="1"><b>1</b> lines → function</button>
+  <button type="button" data-level="2"><b>2</b> functions → element</button>
+  <button type="button" data-level="3"><b>3</b> elements → app</button>
+  <button type="button" data-level="4"><b>4</b> in action</button>
+  <label id="gatebox"><span class="dim">assembly zoom</span>
+    <input id="gate" type="range" min="1" max="4" step="0.01" value="2" aria-label="assembly zoom: pinch or slide across a gate to change level">
+  </label>
+</nav>
+
+<main id="view">
+  <canvas id="wafer" aria-label="the dark wafer: every numbered line, the chosen function's lines lit"></canvas>
+  <canvas id="mol" aria-label="the assembly drawing for the level being viewed"></canvas>
+  <div id="gatesay" class="dim"></div>
+</main>
+
+<section id="card" aria-live="polite">
+  <div id="refusal" hidden></div>
+  <h2 id="title">Assembly</h2>
+  <div id="sub" class="dim">Choose a level or type a key. Each level fetches only the files it draws.</div>
+  <div id="actions"></div>
+  <div id="btnrow" class="btnrow" role="group" aria-label="actions for this card"></div>
+  <div id="evidence" class="dim"></div>
+  <div id="handoff" class="handoff"></div>
+  <div id="result"></div>
+</section>
+
+<details id="questions">
+  <summary>Questions</summary>
+  <div id="qbody" class="dim">Open a level first.</div>
+</details>
+
+<details id="machine">
+  <summary>Machine detail</summary>
+  <div id="mbody" class="dim">Open a level first.</div>
+</details>
+
+<details id="sources">
+  <summary>Sources and loading</summary>
+  <p class="dim" id="rule"></p>
+  <ul id="srclist"></ul>
+</details>
+
+<noscript><p class="dim">This page is drawn from the elements catalogue and the numbered database at run time, so it needs JavaScript.</p></noscript>
+<script type="module" src="assembly.mjs"></script>
+</body>
+</html>
