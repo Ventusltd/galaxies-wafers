@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 29,
+ "count": 30,
  "iterations": [
   {
    "n": 1,
@@ -281,6 +281,15 @@
    "commit": "7e668e26c3da3d41481de764cffcd21e217c162d",
    "committed": "2026-09-15T20:26:04+01:00",
    "subject": "iteration 35 system-journey: One System, Stop by Stop, a single-line diagram grown from five engine calculations"
+  },
+  {
+   "n": 36,
+   "dir": "36-elements-assembly",
+   "slug": "elements-assembly",
+   "title": "Assembly — lines into functions, functions into elements, elements into apps, and in action",
+   "commit": "ebf2f58934e38d4407c07f29719c533ee0dfd087",
+   "committed": "2026-09-15T20:32:31+01:00",
+   "subject": "iteration 36 Assembly: lines into functions, functions into elements, elements into apps, and in action"
   },
   {
    "n": 37,
