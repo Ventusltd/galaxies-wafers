@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 27,
+ "count": 28,
  "iterations": [
   {
    "n": 1,
@@ -263,6 +263,15 @@
    "commit": "5d4d7cdb3f1dd28c230cddfd6a66c2c2d0142763",
    "committed": "2026-09-15T20:07:52+01:00",
    "subject": "iteration 34 Logical Floorplan: engine/voltage-drop.js walked through a textbook five-stage pipeline"
+  },
+  {
+   "n": 35,
+   "dir": "35-system-journey",
+   "slug": "system-journey",
+   "title": "One System, Stop by Stop",
+   "commit": "7e668e26c3da3d41481de764cffcd21e217c162d",
+   "committed": "2026-09-15T20:26:04+01:00",
+   "subject": "iteration 35 system-journey: One System, Stop by Stop, a single-line diagram grown from five engine calculations"
   },
   {
    "n": 37,
