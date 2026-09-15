@@ -40,6 +40,21 @@
  * can name more families than that register snapshot, so once a file is loaded
  * its own keys replace the estimate.
  *
+ * MOVING FRAMES WITHOUT RE-STROKING. Measured in WebKit at iPhone 13 size with
+ * all 187 module files loaded, stroking their 1,418 routes once takes about a
+ * second, so the first version spent a second on every zoom frame. Now the
+ * overlay is drawn in full only when the view settles or something drawn has
+ * changed, into a hidden canvas a little larger than the screen, a slice of a
+ * few milliseconds per animation frame, and shown only when complete. While the
+ * wafer reports a gesture, a frame only sets a CSS transform that carries the
+ * last complete raster to where the camera now puts it: no stroke at all. When
+ * the camera stops moving, the full raster for the settled view is started;
+ * while idle, nothing is drawn unless the view, a layer or the inspected
+ * feature has changed. Routes are still stroked one path per route, in the same
+ * order, so the finished image is the first version's: one path per band was
+ * measured several times slower in the same WebKit (its rasteriser grows faster
+ * than linearly with one path's length), and changes pixels where routes cross.
+ *
  * TAP TO INSPECT. A tap on the wafer that lands within 14 px of a drawn layer
  * feature shows that feature's properties and its layer's evidence. The wafer
  * still receives the same tap and does whatever it does with it; nothing here
@@ -57,7 +72,10 @@ export const FETCH_TIMEOUT_MS = 15000;
    where off-screen routes are skipped). Roughly linear, so 20,000 features is
    about 3 ms of script, leaving a phone several times slower inside a frame. */
 export const FEATURE_CAP = 20000;
-export const LOADER = { fetches: 0, flushes: 0, evictions: 0, rowPaints: 0, drawn: 0, drawMs: 0 };
+/* drawMs: script time of the last complete overlay raster, summed over its slices;
+   rasterWallMs: from its start to its display; carried: frames that only moved
+   the last raster; rasters: complete rasters shown. */
+export const LOADER = { fetches: 0, flushes: 0, evictions: 0, rowPaints: 0, drawn: 0, drawMs: 0, rasterWallMs: 0, carried: 0, rasters: 0, slices: 0 };
 
 /* ── 400kV ENGINE MODE ──────────────────────────────────────────────────────
  * Every module route is restyled as if it were a transmission line, by a
@@ -203,7 +221,7 @@ style.textContent = `
 #engine .dimq{color:#8b93a7;font-size:10.5px}
 #engine [hidden]{display:none!important}
 #engine #engineView,#engine #engineMsg{margin-top:.2rem}
-#overlay{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+canvas.overlay{position:fixed;left:0;top:0;pointer-events:none;z-index:1;transform-origin:50% 50%}
 `;
 document.head.appendChild(style);
 
@@ -224,16 +242,10 @@ function flush() {
   if (d.engine) { computeBands(); paintEngine(); }
   if (d.cards) { if ($('layersBody').hidden) cardsStale = true; else { renderElements(); cardsStale = false; } }
   if (d.url) writeLayersToURL();
-  if (d.draw || d.engine) {
-    /* While a batch is still arriving, an overlay that is slow to paint on this
-       device is repainted only after eight times its own last paint time has
-       passed, so painting cannot starve the page; the last file always paints. */
-    const wait = engine.queue && LOADER.drawMs > 16 ? LOADER.drawMs * 8 - (performance.now() - lastPaint) : 0;
-    if (wait > 0) { if (!paintTimer) paintTimer = setTimeout(() => { paintTimer = 0; schedule(['draw']); }, wait); }
-    else { lastPaint = performance.now(); drawOverlay(); }
-  }
+  /* A raster in progress is never restarted by a change: it finishes, is shown,
+     and the next raster picks the change up, so loading cannot starve painting. */
+  if (d.draw || d.engine) { gen++; drawOverlay(); }
 }
-let lastPaint = 0, paintTimer = 0;
 
 /* ── the engine panel: built once, its parts re-filled ───────────────────── */
 
@@ -312,10 +324,15 @@ panel.id = 'layers';
 panel.innerHTML = `<button id="layersToggle" type="button">LAYERS</button><div id="layersBody" hidden><div id="layersInspect" hidden></div><div id="layersRule" class="lnote" style="margin-left:0"></div><div id="layersList"></div></div>`;
 document.body.appendChild(panel);
 
-const overlay = document.createElement('canvas');
-overlay.id = 'overlay';
-document.body.appendChild(overlay);
-const ctx = overlay.getContext('2d');
+/* Two canvases: the one on show, and the one a raster is being drawn into. */
+const makeOverlay = () => {
+  const c = document.createElement('canvas');
+  c.className = 'overlay'; c.style.visibility = 'hidden';
+  document.body.appendChild(c);
+  return { canvas: c, ctx: c.getContext('2d'), anchor: null };
+};
+let front = makeOverlay(), back = makeOverlay();
+front.canvas.id = 'overlay'; front.canvas.style.visibility = '';
 
 $('layersToggle').addEventListener('click', () => { $('layersBody').hidden = !$('layersBody').hidden; bodyOpened(); });
 $('loadAll').addEventListener('click', loadInView);
@@ -479,6 +496,7 @@ function heldFeatures() {
   if (!manifest) return n;
   for (const l of manifest.layers) {
     const s = state.get(l.id);
+    if (!s) continue;                          /* the rows are not built yet */
     if (s.loaded && s.doc) n += s.doc.features.length;
     else if (s.loading) n += Number(l.features) || 0;
   }
@@ -722,95 +740,226 @@ function* visibleLayers() {
 
 /* ── drawing: the wafer's formula, x * zoom + offset, from placed positions ── */
 
-/* One feature's route. Skipped when its box is more than `pad` px off screen;
-   otherwise drawn exactly as the first version drew it, one path per feature. */
-function strokeRoute(c, i, v, z, ox, oy, pad) {
+/* The raster canvas can be the screen plus SPAN_MARGIN of its size on every
+   side, so a short pan or zoom-out is carried without an empty edge. It is 0,
+   the screen exactly, for two measured reasons: WebKit's stroke cost grows with
+   the canvas area (iPhone 13 size, zoom 2.1: margin 0, 0.1, 0.25 -> 291, 336,
+   1,030 ms), and a canvas offset from the screen's origin is resampled onto a
+   DPR-3 screen differently, changing pixels at rest. A gesture that uncovers an
+   edge starts a fresh raster at once, a slice per frame. */
+const SPAN_MARGIN = 0;
+const SLICE_MS = { moving: 8, idle: 20 };   /* script time per animation frame for a raster in progress */
+let gen = 0;                  /* bumped whenever anything drawn changes other than the camera */
+let job = null;               /* the raster in progress */
+let jobRaf = 0;
+
+const viewKey = v => `${v.x},${v.y},${v.zoom},${v.w},${v.h},${v.dpr}`;
+
+function sizeFor(v) {
+  const mx = Math.round(v.w * SPAN_MARGIN), my = Math.round(v.h * SPAN_MARGIN);
+  const cw = v.w + 2 * mx, ch = v.h + 2 * my, dpr = v.dpr || 1;
+  return { mx, my, cw, ch, dpr, W: Math.round(cw * dpr), H: Math.round(ch * dpr) };
+}
+
+/* One feature's route. Skipped when its box is more than `pad` px outside the
+   raster; otherwise drawn exactly as the first version drew it, one path per feature.
+   Screen y grows downward, so a box is above the raster when its LOWEST world y
+   (b[1], the largest screen y) is above the top, and below it when its HIGHEST
+   (b[3]) is below the bottom. The first version tested these the other way
+   round, which dropped every route that crossed the top or bottom edge. */
+function strokeRoute(g, c, i, W, H, z, ox, oy, pad) {
   const b = c.box, bi = i * 4;
-  if (b[bi + 2] * z + ox < -pad || b[bi] * z + ox > v.w + pad || oy - b[bi + 3] * z < -pad || oy - b[bi + 1] * z > v.h + pad) return;
+  if (b[bi + 2] * z + ox < -pad || b[bi] * z + ox > W + pad || oy - b[bi + 1] * z < -pad || oy - b[bi + 3] * z > H + pad) return;
   const p = c.pos, s0 = c.start[i], n = c.len[i];
-  ctx.beginPath();
+  g.beginPath();
   for (let k = 0; k < n; k++) {
     const x = p[(s0 + k) * 2] * z + ox, y = oy - p[(s0 + k) * 2 + 1] * z;
-    k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    k ? g.lineTo(x, y) : g.moveTo(x, y);
   }
-  ctx.stroke();
+  g.stroke();
   LOADER.drawn++;
 }
 
-function drawOverlay() {
-  const t0 = performance.now();
-  paintOverlay();
-  LOADER.drawMs = performance.now() - t0;
-}
-
-function paintOverlay() {
-  const v = liveView();
-  if (!v || !v.w || !v.h) return;          /* the wafer has not framed itself yet */
-  const dpr = v.dpr || 1;
-  const W = Math.round(v.w * dpr), H = Math.round(v.h * dpr);
-  if (overlay.width !== W || overlay.height !== H) { overlay.width = W; overlay.height = H; }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, v.w, v.h);
-  const z = v.zoom, ox = v.w / 2 - v.x * z, oy = v.h / 2 + v.y * z;
-
+/* Everything one raster draws, fixed when it starts: later loads, releases and
+   band changes wait for the next raster, so a raster is never a mixture. The
+   order is the first version's: layer colours, then bands 66kV up to 400kV,
+   then substations, then the inspected feature. */
+function planRaster(v) {
+  const steps = [];
   const engineOn = engine.on && engine.bands.length;
   for (const [l, s] of visibleLayers()) {
     if (engineOn && isModule(l)) continue;
-    const c = s.cache;
-    ctx.strokeStyle = l.colour; ctx.fillStyle = l.colour;
-    ctx.globalAlpha = l.draws === 'lines' ? 0.55 : 0.8;
-    ctx.lineWidth = 1;
-    for (let i = 0; i < c.F; i++) {
-      if (c.type[i] === 1) {
-        const j = c.start[i], x = c.pos[j * 2] * z + ox, y = oy - c.pos[j * 2 + 1] * z;
-        if (x < -2 || y < -2 || x > v.w + 2 || y > v.h + 2) continue;
-        ctx.fillRect(x - 1, y - 1, 2, 2);
-      } else if (c.type[i] === 2) strokeRoute(c, i, v, z, ox, oy, 2);
-    }
-    ctx.globalAlpha = 1;
+    steps.push({ kind: 'layer', l, c: s.cache });
   }
-
   if (engineOn) {
     const mods = [];
     for (const [l, s] of visibleLayers()) if (isModule(l)) { s.eng ??= moduleStats(s.doc); mods.push(s); }
-    ctx.globalAlpha = 0.9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const band of [...engine.bands].reverse()) {      /* 66kV first, 400kV on top */
-      ctx.strokeStyle = band.color; ctx.lineWidth = band.width;
-      for (const s of mods) {
-        if (bandOf(s.eng.count) !== band) continue;
-        const c = s.cache;
-        for (let i = 0; i < c.F; i++) if (c.type[i] === 2) strokeRoute(c, i, v, z, ox, oy, band.width + 2);
-      }
+      for (const s of mods) if (bandOf(s.eng.count) === band) steps.push({ kind: 'band', band, c: s.cache });
     }
     if (engine.subs) {
-      const r = evalExpr(engine.subs.radius, Math.log2(v.zoom));
-      ctx.globalAlpha = 0.85; ctx.fillStyle = engine.subs.color; ctx.strokeStyle = '#0b0d12'; ctx.lineWidth = 0.6;
+      const dots = [];
       for (const s of mods) {
         if (!Number.isFinite(s.eng.first)) continue;
         s.eng.xy ??= placeAll([s.eng.first]);
-        const x = s.eng.xy[0] * z + ox, y = oy - s.eng.xy[1] * z;
-        if (x < -r || y < -r || x > v.w + r || y > v.h + r) continue;
-        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        dots.push(s.eng.xy);
+      }
+      steps.push({ kind: 'subs', dots, r: evalExpr(engine.subs.radius, Math.log2(v.zoom)) });
+    }
+  }
+  if (picked) steps.push({ kind: 'picked', picked });
+  return steps;
+}
+
+function startRaster(v) {
+  const sz = sizeFor(v);
+  const cv = back.canvas;
+  if (cv.width !== sz.W || cv.height !== sz.H) {
+    cv.width = sz.W; cv.height = sz.H;
+    cv.style.width = sz.cw + 'px'; cv.style.height = sz.ch + 'px';
+    cv.style.left = -sz.mx + 'px'; cv.style.top = -sz.my + 'px';
+  }
+  const g = back.ctx;
+  g.setTransform(sz.dpr, 0, 0, sz.dpr, 0, 0);
+  g.globalAlpha = 1;
+  g.clearRect(0, 0, sz.cw, sz.ch);
+  const z = v.zoom;
+  job = { v: { x: v.x, y: v.y, zoom: v.zoom, w: v.w, h: v.h, dpr: v.dpr }, key: viewKey(v), gen, sz,
+          z, ox: sz.cw / 2 - v.x * z, oy: sz.ch / 2 + v.y * z,
+          steps: planRaster(v), si: 0, fi: 0, cpu: 0, t0: performance.now() };
+}
+
+/* Draws the raster in progress until it is done (true) or `budget` ms have passed. */
+function runRaster(budget) {
+  const t0 = performance.now();
+  const J = job, g = back.ctx, { cw, ch } = J.sz, { z, ox, oy } = J;
+  const out = () => { J.cpu += performance.now() - t0; return false; };
+  LOADER.slices++;
+  while (J.si < J.steps.length) {
+    const st = J.steps[J.si];
+    if (st.kind === 'layer') {
+      const { l, c } = st;
+      g.strokeStyle = l.colour; g.fillStyle = l.colour;
+      g.globalAlpha = l.draws === 'lines' ? 0.55 : 0.8;
+      g.lineWidth = 1;
+      for (; J.fi < c.F; J.fi++) {
+        const i = J.fi;
+        if (c.type[i] === 1) {
+          const j = c.start[i], x = c.pos[j * 2] * z + ox, y = oy - c.pos[j * 2 + 1] * z;
+          if (x < -2 || y < -2 || x > cw + 2 || y > ch + 2) continue;
+          g.fillRect(x - 1, y - 1, 2, 2);
+        } else if (c.type[i] === 2) {
+          strokeRoute(g, c, i, cw, ch, z, ox, oy, 2);
+          if (performance.now() - t0 > budget) { J.fi++; return out(); }
+        }
+      }
+    } else if (st.kind === 'band') {
+      const { band, c } = st;
+      g.globalAlpha = 0.9; g.lineCap = 'round'; g.lineJoin = 'round';
+      g.strokeStyle = band.color; g.lineWidth = band.width;
+      for (; J.fi < c.F; J.fi++) {
+        if (c.type[J.fi] !== 2) continue;
+        strokeRoute(g, c, J.fi, cw, ch, z, ox, oy, band.width + 2);
+        if (performance.now() - t0 > budget) { J.fi++; return out(); }
+      }
+    } else if (st.kind === 'subs') {
+      const r = st.r;
+      g.globalAlpha = 0.85; g.fillStyle = engine.subs.color; g.strokeStyle = '#0b0d12'; g.lineWidth = 0.6;
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      for (const xy of st.dots) {
+        const x = xy[0] * z + ox, y = oy - xy[1] * z;
+        if (x < -r || y < -r || x > cw + r || y > ch + r) continue;
+        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.stroke();
+      }
+    } else if (st.kind === 'picked') {
+      const pk = st.picked, geo = pk.feature.geometry;
+      g.globalAlpha = 1; g.strokeStyle = pk.layer.colour; g.lineWidth = 1.4;
+      const ks = geo.type === 'Point' ? [geo.key] : geo.keys;
+      const p = placeAll(ks);
+      for (let i = 0; i < ks.length; i++) {
+        g.beginPath(); g.arc(p[i * 2] * z + ox, oy - p[i * 2 + 1] * z, 7, 0, 6.2832); g.stroke();
       }
     }
-    ctx.globalAlpha = 1;
+    g.globalAlpha = 1;
+    J.si++; J.fi = 0;
   }
+  J.cpu += performance.now() - t0;
+  return true;
+}
 
-  if (picked) {
-    const g = picked.feature.geometry;
-    ctx.strokeStyle = picked.layer.colour; ctx.lineWidth = 1.4;
-    const ks = g.type === 'Point' ? [g.key] : g.keys;
-    const p = placeAll(ks);
-    for (let i = 0; i < ks.length; i++) {
-      ctx.beginPath(); ctx.arc(p[i * 2] * z + ox, oy - p[i * 2 + 1] * z, 7, 0, 6.2832); ctx.stroke();
-    }
+/* Shows the finished raster: the two canvases change places. */
+function commitRaster() {
+  const J = job;
+  job = null;
+  [front, back] = [back, front];
+  front.anchor = { ...J.v, key: J.key, gen: J.gen };
+  front.canvas.id = 'overlay'; back.canvas.removeAttribute('id');
+  front.canvas.style.transform = '';
+  front.canvas.style.visibility = '';
+  back.canvas.style.visibility = 'hidden';
+  back.canvas.style.transform = '';
+  LOADER.drawMs = J.cpu; LOADER.rasterWallMs = performance.now() - J.t0; LOADER.rasters++;
+}
+
+/* The CSS transform that carries the shown raster to the camera v: translation
+   and scale about the screen centre, which is the raster's centre. */
+function carry(v) {
+  const a = front.anchor;
+  const s = v.zoom / a.zoom;
+  const dx = (a.x - v.x) * v.zoom, dy = -(a.y - v.y) * v.zoom;
+  return `translate(${dx}px,${dy}px) scale(${s})`;
+}
+/* True when the carried raster still covers the whole screen at no more than
+   twice its drawn scale; otherwise a fresh raster is started while moving. */
+function carryCovers(v) {
+  const a = front.anchor;
+  if (!a || a.w !== v.w || a.h !== v.h || a.dpr !== v.dpr) return false;
+  const s = v.zoom / a.zoom, { cw, ch } = sizeFor(a);
+  const dx = (a.x - v.x) * v.zoom, dy = -(a.y - v.y) * v.zoom;
+  return s <= 2 && Math.abs(dx) + v.w / 2 <= s * cw / 2 && Math.abs(dy) + v.h / 2 <= s * ch / 2;
+}
+
+function tick() {
+  jobRaf = 0;
+  const v = liveView();
+  pump(v, !!v?.moving);
+}
+
+/* The one entry point for every wafer frame and every change. Idle and up to
+   date: nothing is drawn. Moving: the shown raster is carried, and a fresh one is
+   started only when the carried one no longer covers the screen. Settled or
+   changed: a full raster is started. A raster in progress runs one slice per
+   frame and is shown when complete. */
+function pump(v, moving) {
+  if (!v || !v.w || !v.h) return;          /* the wafer has not framed itself yet */
+  const key = viewKey(v);
+  if (!job) {
+    const a = front.anchor;
+    if (a && a.key === key && a.gen === gen) { front.canvas.style.transform = ''; return; }
+    if (!moving || !carryCovers(v)) startRaster(v);
   }
+  if (job && !jobRaf && runRaster(moving ? SLICE_MS.moving : SLICE_MS.idle)) {     /* one slice per frame: a pending tick runs the next */
+    commitRaster();
+    const a = front.anchor;
+    if (!moving && (a.key !== key || a.gen !== gen)) startRaster(v);   /* the view or the data moved on meanwhile */
+  }
+  if (front.anchor) {
+    const same = front.anchor.key === key;
+    if (!same) LOADER.carried++;
+    front.canvas.style.transform = same ? '' : carry(v);
+  }
+  if (job && !jobRaf) jobRaf = requestAnimationFrame(tick);
+}
+
+function drawOverlay(snap) {
+  const v = snap && typeof snap.zoom === 'number' ? snap : liveView();
+  pump(v, !!v?.moving);
 }
 
 /* The in-view count follows the camera, and costs nothing while the ring is unchanged. */
 let lastRingSig = '';
-window.__wafer?.onDraw.add(() => {
-  drawOverlay();
+window.__wafer?.onDraw.add(snap => {
+  drawOverlay(snap);
   if (!engine.index) return;
   const r = viewRing(), sig = r ? r.sig : '';
   if (sig !== lastRingSig) { lastRingSig = sig; paintLoadState(); }
@@ -856,7 +1005,7 @@ function inspect(hit) {
   picked = hit;
   const box = $('layersInspect');
   box.replaceChildren();
-  if (!hit) { box.hidden = true; drawOverlay(); return; }
+  if (!hit) { box.hidden = true; gen++; drawOverlay(); return; }
   const { layer: l, feature: f } = hit;
   const close = node('button', '✕');
   close.id = 'layersInspectClose'; close.type = 'button'; close.setAttribute('aria-label', 'close');
@@ -873,7 +1022,7 @@ function inspect(hit) {
   box.hidden = false;
   $('layersBody').hidden = false;
   bodyOpened();
-  drawOverlay();
+  gen++; drawOverlay();
 }
 
 /* Non-capturing, and never prevents or stops the event: the wafer's own tap
@@ -906,7 +1055,8 @@ function inspect(hit) {
 }
 
 /* Read-only counters for tests. */
-window.__layers04 = Object.freeze({ LOADER, FEATURE_CAP, MAX_FETCH, held: () => heldFeatures(), busy: () => !!engine.queue });
+window.__layers04 = Object.freeze({ LOADER, FEATURE_CAP, MAX_FETCH, held: () => heldFeatures(), busy: () => !!engine.queue,
+  rastering: () => !!job, redraw: () => { gen++; drawOverlay(); } });
 
 (async () => {
   schedule(['engine']);
