@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Logical Floorplan — the estate's code through a textbook processor</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="floorplan.css">
+</head>
+<body>
+<main id="page">
+  <header>
+    <h1>LOGICAL FLOORPLAN</h1>
+    <p class="warn">Illustrative architecture, not a model of any specific chip.</p>
+    <p class="dim">A real grid-engine module, read as text and cut into tokens, walked line by line through a
+      classic five-stage pipeline (fetch, decode, execute, memory, write-back) as taught in Patterson and Hennessy.
+      Everything drawn in the stages is derived from the source text by the tokenizer on this page.</p>
+  </header>
+
+  <section id="source" aria-label="Source">
+    <div class="row">
+      <span>source</span>
+      <span id="srcstate" class="state">WAIT</span>
+      <label class="sel">function <select id="fn" disabled></select></label>
+    </div>
+    <div id="srcline" class="dim small"></div>
+  </section>
+
+  <div id="dieWrap">
+    <canvas id="die" aria-label="Floorplan of an illustrative processor. Tap a block to see what it handles."></canvas>
+  </div>
+
+  <section id="controls" aria-label="Controls">
+    <button id="step" disabled>STEP</button>
+    <button id="play" disabled>PLAY</button>
+    <button id="reset" disabled>RESET</button>
+    <label class="speed">speed <input id="speed" type="range" min="0" max="4" step="1" value="2"> <span id="speedv">1x</span></label>
+  </section>
+
+  <section id="detail" aria-live="polite">
+    <div class="row"><b id="dtitle">Tap a block on the die</b> <span id="dcycle" class="dim small"></span></div>
+    <pre id="dbody" class="body">The pipeline is empty until the source loads.</pre>
+    <div class="row keyrow">
+      <span id="dkey" class="small"></span>
+    </div>
+    <div class="row links">
+      <a id="lcard" class="btn" hidden>open in code card</a>
+      <a id="lwafer" class="btn" hidden>open on the wafer</a>
+    </div>
+  </section>
+
+  <section id="keys" aria-label="Line keys">
+    <div class="row">
+      <span>line keys</span>
+      <span id="keystate" class="state">WAIT</span>
+      <button id="findkeys" disabled>FIND LINE KEYS</button>
+    </div>
+    <p class="dim small" id="keynote">Nothing is fetched until you ask. The keys come from the numbered database
+      (LINES.md from the modular star): this page binary-searches it with small byte-range reads through a queue
+      of at most three requests, each with a 15 s timeout, and reads one window of rows around the function's first
+      line. The file is never downloaded whole.</p>
+  </section>
+
+  <section id="honest">
+    <p><b>A teaching mapping, not how JavaScript runs.</b> A real JavaScript engine parses the source into
+      bytecode for an interpreter, and a JIT compiler turns hot functions into machine code; only those machine
+      instructions pass through a processor's pipeline, many of them per source line. Here each source line is
+      treated as if it were one instruction so the stages can be seen.</p>
+    <p class="dim small" id="rules"></p>
+  </section>
+
+  <details id="questions">
+    <summary>Questions</summary>
+    <ol>
+      <li><b>How does this help draw a system or a single-line diagram?</b> <span id="q1"></span></li>
+      <li><b>What is this code used for?</b> <span id="q2"></span></li>
+      <li><b>Where does it lead next?</b> <span id="q3"></span></li>
+    </ol>
+    <p><b>Machine detail.</b> <span id="q4"></span></p>
+  </details>
+
+  <footer class="dim small">
+    <a href="../">all iterations</a> · <a href="../../">the Line Wafer</a>
+  </footer>
+</main>
+<script type="module" src="floorplan.mjs"></script>
+</body>
+</html>
