@@ -25,6 +25,7 @@ The substrate turns a key into a place, so a layer cannot disagree with the grou
 | crossname | differently named functions sharing substantial lines, containment excluded | the family index |
 | blocks | functions inside a named, numbered block | the live block register |
 | engine | the grid engine's functions | the live block register |
+| grid-engine-shell | the grid engine's functions with each module's export subpath, schema and NOT_COMPUTED keys; feeds the ELEMENT cards | the live block register, the engine's package.json and module source, `node verify.mjs` |
 | declared | dependencies the register declares | `depends_on` |
 | learned | rules learned from recorded composition failures | the chemistry star |
 
