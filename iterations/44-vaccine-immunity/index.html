@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Immunity</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="imm.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>IMMUNITY</h1>
+    <p class="dim">A coding vaccine is a named failure mode plus the executable check that makes a repository immune to it. The registry is the public repository <code>Ventusltd/cvaa</code>: one file per vaccine in <code>vaccines/</code>, named by a 12-digit timestamp, with front matter <code>vaccine</code>, <code>generation</code>, <code>dose</code>, <code>superseded_by</code> and five sections: Disease, Symptom, Antibody, Dose, Provenance. Each vaccine is a node on the ring, in timestamp order, the only order. Every file is read at commit <span class="pin" id="pin">—</span>.</p>
+    <p id="summary" class="summary">WAIT — nothing is fetched until you tick a layer, tap a vaccine or open a section.</p>
+  </header>
+
+  <section class="layers" aria-label="Layers">
+    <label class="layer"><input type="checkbox" data-layer="ring"><span id="lbl-ring" data-base-label="Ring · vaccines/ listing and vaccines.lock">Ring · vaccines/ listing and vaccines.lock [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="files"><span id="lbl-files" data-base-label="Files · front matter and sha256 of every vaccine">Files · front matter and sha256 of every vaccine [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="gen"><span id="lbl-gen" data-base-label="Generation edges · each vaccine to the one before it">Generation edges · each vaccine to the one before it [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="dose"><span id="lbl-dose" data-base-label="Dose edges · each vaccine to the previous one of the same dose">Dose edges · each vaccine to the previous one of the same dose [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="sup"><span id="lbl-sup" data-base-label="superseded_by edges · retired vaccine to its successor">superseded_by edges · retired vaccine to its successor [WAIT]</span></label>
+    <label class="layer"><input type="checkbox" data-layer="fired"><span id="lbl-fired" data-base-label="Last fired · vaccines/last-fired.json">Last fired · vaccines/last-fired.json [WAIT]</span></label>
+  </section>
+  <p id="window" class="small dim" hidden></p>
+
+  <div class="plane">
+    <canvas id="ring" aria-label="The vaccine ring. Tap a node to read its vaccine. Drag to pan, pinch or wheel to zoom."></canvas>
+    <button type="button" id="fit" class="fit">fit</button>
+    <div class="stepnav">
+      <button type="button" id="prev" aria-label="previous vaccine">‹</button>
+      <button type="button" id="next" aria-label="next vaccine">›</button>
+    </div>
+    <div id="drawn" class="drawn dim"></div>
+  </div>
+  <p class="legend small dim"><span class="sw sw-read"></span>file read · <span class="sw sw-listed"></span>listed, not read · <span class="sw sw-super"></span>superseded · <span class="ln ln-gen"></span>generation · <span class="ln ln-loop"></span>every-loop · <span class="ln ln-commit"></span>every-commit · <span class="ln ln-deploy"></span>every-deploy · <span class="ln ln-sup"></span>superseded_by, arrow at the successor. No colour is a verdict.</p>
+
+  <section id="card" class="card" aria-live="polite">
+    <p class="dim">Tap a vaccine on the ring, or step with ‹ ›, to read it.</p>
+  </section>
+
+  <details id="integrity" class="panel">
+    <summary>Registry integrity</summary>
+    <p class="small dim">Computed now from the listing, <code>vaccines.lock</code> and the file bytes. Opening this section ticks Ring and Files.</p>
+    <div class="tablewrap"><table class="rows-t">
+      <tbody>
+        <tr><th>vaccine files found</th><td id="i-found">not yet known</td></tr>
+        <tr><th>named in vaccines.lock</th><td id="i-named">not yet known</td></tr>
+        <tr><th>LOCKED (sha256 equals the lock)</th><td id="i-locked">not yet known</td></tr>
+        <tr><th>HASH DIFFERS</th><td id="i-differs">not yet known</td></tr>
+        <tr><th>lock entries without a file</th><td id="i-orphan">not yet known</td></tr>
+        <tr><th>files without a lock entry</th><td id="i-unlocked">not yet known</td></tr>
+        <tr><th>superseded</th><td id="i-super">not yet known</td></tr>
+        <tr><th>names breaking the 12-digit timestamp rule</th><td id="i-names">not yet known</td></tr>
+        <tr><th>repeated timestamps</th><td id="i-dup">not yet known</td></tr>
+        <tr><th>front matter or sections breaking the rules</th><td id="i-fm">not yet known</td></tr>
+        <tr><th>other files in vaccines/</th><td id="i-other">not yet known</td></tr>
+        <tr><th>wording adapted for this page</th><td id="i-adapted">not yet known</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small dim">The filename rule matters: the estate once went fail-closed because one vaccine carried a 14-digit name, and <code>inoculate.mjs</code> refuses the whole registry on one malformed file. The banned-API scan inoculate.mjs applies to each antibody is not recomputed here.</p>
+    <ul id="i-list" class="plainlist small"></ul>
+  </details>
+
+  <details id="questions" class="panel">
+    <summary>Questions</summary>
+    <dl>
+      <dt>1. How does this help draw a system or a single-line diagram?</dt>
+      <dd>It draws no busbar, feeder, transformer, cable route, protection or earthing: none yet. It guards the code that draws them. Vaccines whose Disease or Symptom names a drawn grid element, computed from the files read (name-match inference on the whole words <code>substation</code>, <code>cable</code>, <code>busbar</code>, <code>feeder</code>, <code>transformer</code>, <code>earthing</code>, <code>leaf</code>, <code>dead end</code>, <code>grid</code>):
+        <ul id="q-draw" class="qrows"><li class="dim">not yet known: tick Files.</li></ul></dd>
+      <dt>2. What is this code used for?</dt>
+      <dd><code>inoculate.mjs &lt;repo&gt;</code> runs the antibodies against a repository: <code>frontMatter</code> reads each vaccine file; the registry is refused whole on any malformed name, front matter, section or lock mismatch; <code>buildContext</code> builds a data-only snapshot of the target; <code>runAntibody</code> runs each antibody in a child process with an empty environment, the Node permission model and a 5 s cap (through <code>tools/antibody-runner.mjs</code>); superseded vaccines are skipped; findings write SARIF, a job summary and the <code>vaccines/last-fired.json</code> sidecar, and exit 1. <code>tools/selftest.mjs</code> builds a <code>CLEAN</code> fixture and a <code>DISEASED</code> fixture per vaccine and requires every antibody to fire on its disease and stay silent on health. Callers found by searching workflow files for <code>Ventusltd/cvaa</code> (name-match inference; their commits are not pinned here): gridatlas <code>202608301321-verify-live.yml</code> and <code>202608310050-gridatlas-next-version-builders.yml</code>, pipelinenews <code>202608311458-build-intelligence-release.yml</code>, spiders <code>genome.yml</code>, testcode <code>testcode.yml</code>. Consumers copy <code>consumer-workflow-template.yml</code>, which calls <code>.github/workflows/202608301446-inoculate.yml</code> by 40-character SHA.
+        <span class="btns"><a class="btn" id="q-code" rel="noopener">CODE</a><a class="btn" id="q-app" rel="noopener">APP</a></span>
+        This page: <code>vax.mjs</code> <code>parseName</code>, <code>frontMatter</code>, <code>parseVaccine</code>, <code>lockStatus</code>, <code>orderRing</code>, <code>buildEdges</code>, <code>adapt</code>; drawn by <code>app.mjs</code> on one canvas.</dd>
+      <dt>3. Where does it lead next?</dt>
+      <dd><span id="q-next">not yet known: tick Files.</span></dd>
+    </dl>
+  </details>
+  <p id="machine" class="machine small">Machine detail · not yet known: tick Ring.</p>
+
+  <footer class="dim small">
+    <p id="loadingrule">Loading, as Grid Atlas does it: nothing is fetched until a layer is ticked, a vaccine is tapped or a section is opened; one queue of 4 concurrent fetches, each with a 15 s timeout; one shared promise per URL, dropped on failure so a retry is possible; only the changed label or row is rewritten.</p>
+    <p id="prov"></p>
+    <p>Antibody source is shown as text and never executed on this page. <a href="../">every version</a></p>
+  </footer>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
