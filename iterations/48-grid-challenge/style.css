@@ -1,0 +1,31 @@
+:root{--ink:#d8dee9;--dim:#8b93a7;--ground:#05060a;--edge:#444;--panel:#0b0d12;--lit:#ffd54a;--beam:#5ec8f2;--mark:#ffd54a33;
+--top:env(safe-area-inset-top,0px);--bot:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+main,details,p,.el,.k,h3,summary{overflow-wrap:anywhere;min-width:0}
+html{background:var(--ground)}
+body{margin:0 auto;max-width:980px;background:var(--ground);color:var(--ink);font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:calc(var(--top) + .5rem) .75rem calc(var(--bot) + 1.5rem);-webkit-text-size-adjust:100%}
+.dim{color:var(--dim)}
+.mark{letter-spacing:.14em;font-size:11px;color:var(--lit)}
+h1{font-size:17px;margin:.2rem 0 .4rem;color:var(--ink)}
+p{margin:.35rem 0}
+code{color:#b9c4d6;word-break:break-word}
+.boundary{border:1px solid var(--edge);border-radius:6px;padding:.5rem .6rem;background:var(--panel);color:#c9cfdb;font-size:12px}
+details{border:1px solid var(--edge);border-radius:6px;background:var(--panel);margin:.5rem 0}
+summary{cursor:pointer;padding:.6rem .6rem;list-style-position:inside}
+summary b{color:var(--lit);font-weight:normal}
+.body{padding:0 .6rem .6rem}
+.st{font-size:11px;color:var(--dim);display:block;margin-top:.15rem}
+.terms span{display:inline-block;border:1px solid var(--edge);border-radius:4px;padding:0 .3rem;margin:0 .2rem .2rem 0}
+.label{font-size:11px;color:var(--dim);border-left:2px solid var(--edge);padding-left:.4rem}
+.galaxy{margin:.4rem 0}
+.el{border-top:1px solid #222;padding:.5rem 0}
+.el h3{font-size:13px;margin:0 0 .15rem;color:var(--lit);font-weight:normal}
+.el .k{color:var(--dim);font-size:11px}
+mark{background:var(--mark);color:#fff;border-bottom:1px solid var(--lit)}
+.btns{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.35rem;align-items:center}
+a.btn,button.btn{font:inherit;font-size:12px;padding:.45rem .7rem;border-radius:6px;background:#0b0d12;color:var(--beam);border:1px solid var(--beam);text-decoration:none;display:inline-block;min-height:36px}
+.why{font-size:11px;color:var(--dim)}
+#questions ol,#machine p{padding:0 .6rem .6rem 1.6rem;margin:0}
+#machine p{padding-left:.6rem}
+#questions li{margin:.3rem 0}
+@media (min-width:760px){body{font-size:14px}h1{font-size:20px}}
