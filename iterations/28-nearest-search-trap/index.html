@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>The Nearest-Search Trap — a gate made visible</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="trap.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>THE NEAREST-SEARCH TRAP</h1>
+    <div class="dim">A proof in the grid engine plants two mapped nodes around one query point: a true nearest node almost due east, and a decoy almost due north. A search that scans every node finds the true one. A search that first cuts the map to a square box drawn in <i>degrees</i> can silently keep the decoy and drop the true node, because a degree of longitude is shorter than a degree of latitude away from the equator. Every distance below is returned by the engine's own modules, called in this page.</div>
+    <div id="mods" class="mods" aria-live="polite"></div>
+  </header>
+
+  <div class="cols">
+    <section class="chart">
+      <h2>THE PLANE · FIXTURE NODES FROM THE PROOF</h2>
+      <canvas id="plane" role="img" aria-label="Map-like plane with the query point, the proof's substation nodes, and both searches"></canvas>
+      <div class="controls">
+        <button id="runA" type="button">▶ (a) scan every node</button>
+        <button id="runB" type="button">▶ (b) degree-box pre-filter</button>
+        <button id="step" type="button">step</button>
+        <button id="reset" type="button">query back to the proof's fixture</button>
+        <button id="gridBtn" type="button" aria-pressed="false">show the query grid</button>
+      </div>
+      <div id="key" class="dim small key"></div>
+      <p class="dim small">Drag or tap anywhere on the plane to move the query point. The nodes stay where the proof put them.</p>
+    </section>
+
+    <section class="side">
+      <p class="boundary">A distance is a distance: this page reports the nearest <b>mapped</b> node to a point and how far away it is, never whether anything can be joined to it. Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.</p>
+
+      <h2>AT YOUR QUERY POINT</h2>
+      <div id="query" class="small"></div>
+      <div class="pair">
+        <div class="panel" id="panelA"><h3>(a) scan every node</h3><ol id="stepsA" class="steps"></ol><div id="ansA" class="ans"></div></div>
+        <div class="panel mag" id="panelB"><h3>(b) degree-box pre-filter</h3><ol id="stepsB" class="steps"></ol><div id="ansB" class="ans"></div></div>
+      </div>
+      <div id="compare" class="compare"></div>
+
+      <h2>THE GATE · THE PROOF'S OWN TRAP CHECKS, RUN AGAINST BOTH SEARCHES</h2>
+      <p class="boundary">A distance is a distance: nearest mapped node only. Illustrative physics drawn by a computer from published data. Not an engineering design or certified calculation. Any real design above 100 kW needs study and approval by a qualified chartered electrical engineer under the applicable standards.</p>
+      <div id="gate" class="gate small"></div>
+
+      <details id="questions" class="questions">
+        <summary>Questions</summary>
+        <h3>1. How does this help draw a system or a single-line diagram?</h3>
+        <p>It feeds one element: the <b>far end of a cable route</b>, the substation node at the network end of an onshore connection. <code>index(points).nearest(lon, lat, { minimumKv })</code> returns <code>{ point, km }</code>: <code>point.name</code> and <code>point.location</code> name and place that node, <code>point.voltages_kv</code> gives the voltages its busbars declare, and <code>km</code> is the straight-line length from the site. It draws no busbar, transformer, protection or earthing, and no route: the length is a straight line, not a cable length. Cited: gridmachine1 <code>CABLE-ENGINES.md</code> (commit c6cbf96), "Onshore connection" row, endpoints "site, substation", measuring "distance to the nearest mapped substation at or above the relevant voltage".</p>
+        <h3>2. What is this code used for?</h3>
+        <p>Module <code>engine/v9-nearest-search.js</code> in ventus-grid-engine at commit d9cd18b, exporting <code>normalise</code>, <code>index</code> and <code>schema</code>; it imports <code>distanceKm</code> from <code>engine/v9-geodesy.js</code>. Package export <code>./v9-nearest-search</code> (<code>package.json</code>). Callers inside the engine at that commit, by source: <code>proofs/v9-engine.proof.mjs</code> (the trap on this page) and <code>proofs/compute-observer.proof.mjs</code> (a fixture lookup). It was extracted from gridatlas <code>atlas/modules/202609011950-substation-lookup.js</code>, which its own header and <code>sources/provenance.json</code> record as in no composition manifest, so nothing in the live Atlas loads it. The live Atlas runs an inline, byte-different exhaustive duplicate, <code>state.nearest</code> at line 6083 of gridatlas <code>atlas/cartridges/202609041330-substation-intelligence-v9-63.js</code> (commit 64268fd), documented in the engine's <code>docs/v9-duplication.md</code> 2(a). A text search of gridatlas outside <code>releases/</code> for <code>.nearest(</code> found no call of that function by name, only <code>network.nearest</code> in the SLD sandbox cartridges, a different index (name-match inference).</p>
+        <h3>3. Where does it lead next?</h3>
+        <p>The next element is the <b>cable route</b> from the site to that node, and at the node, the substation busbar of the voltage asked for. In the estate's engine routing (gridmachine1 <code>CABLE-ENGINES.md</code>) this search is E1, "substation finder within a radius", the general case and the declared fallback for offshore wind (E3) and declared transmission connections (E4). A route model, busbar group or rating for that node is not established here: this module returns a name, a place and a distance, and nothing else.</p>
+      </details>
+      <p class="machine small"><b>Machine detail</b> · inputs: <code>points</code> [{ name, location { lon °, lat ° }, voltages_kv [kV] }], query <code>lon</code> ° and <code>lat</code> ° (decimal degrees), <code>minimumKv</code> kV (floor on the highest declared voltage; default 0), <code>limit</code> count (default 1; 0 is read as 1) · outputs: <code>{ point, km }</code> or <code>null</code> for limit 1, else an array sorted by km ascending; km is haversine on a sphere of radius <span id="mdR">EARTH_RADIUS_KM</span> km; <code>index</code> also returns <code>size</code> (distinct normalised names), <code>located</code> (points with a location), <code>byName(name)</code> → point or null · refusals: none thrown; no eligible node returns <code>null</code>, a node with no voltages is skipped, a point with no location is never searched · source: ventus-grid-engine d9cd18b0e2034325814924e6e4a0e958014f2748.</p>
+
+      <h2>HOW OFTEN THE PRE-FILTER DISAGREES</h2>
+      <div id="grid" class="small"></div>
+
+      <h2>WHAT THIS PAGE IS AND IS NOT</h2>
+      <div id="notes" class="dim small notes"></div>
+      <footer class="dim small"><span id="pin"></span> <a href="../">every version</a></footer>
+    </section>
+  </div>
+</main>
+<script type="module" src="trap.mjs"></script>
+</body>
+</html>
