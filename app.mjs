@@ -65,7 +65,10 @@ const U = {
 
 const view = { x: 0, y: 0, zoom: 1, w: 0, h: 0, dpr: 1, focus: -1, link: null };
 /* The one read-only hook for layers: the live camera, and listeners called after every frame. */
-window.__wafer = Object.freeze({ get view() { return view; }, onDraw: new Set() });
+/* Listeners get a frozen scalar snapshot, never the live object: a listener that
+   mutates what it received cannot move the wafer's camera. (Codex review.) */
+const snapshot = () => Object.freeze({ x: view.x, y: view.y, zoom: view.zoom, w: view.w, h: view.h, dpr: view.dpr });
+window.__wafer = Object.freeze({ get view() { return snapshot(); }, onDraw: new Set() });
 
 /* ── the surface ─────────────────────────────────────────────────────────── */
 
@@ -274,7 +277,7 @@ function render() {
     }
   }
   drawMarks();
-  for (const f of window.__wafer.onDraw) { try { f(view); } catch (e) { console.warn('onDraw listener failed:', e); } }
+  { const snap = snapshot(); for (const f of window.__wafer.onDraw) { try { f(snap); } catch (e) { console.warn('onDraw listener failed:', e); } } }
 }
 
 let pending = false;
