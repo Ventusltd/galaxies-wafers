@@ -31,6 +31,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
 
 const state = new Map();   /* id -> {status, doc, why} */
 let manifest = null;
+let droppedIds = [];   /* layer ids asked for in the URL that the manifest does not name */
 let picked = null;         /* {layer, feature} currently inspected */
 
 const TAP_SLOP = 7;        /* px of movement under which a pointer-up is a tap */
@@ -67,6 +68,7 @@ style.textContent = `
 .ltag.WAIT{color:#8b93a7}.ltag.LOAD{color:#ffd54a}.ltag.OK{color:#7fd6a2}
 .ltag.EMPTY{color:#b39ddb}.ltag.FAIL{color:#ff8a80}
 .lnote{color:#8b93a7;font-size:10.5px;margin:.1rem 0 .35rem 1.5rem}
+.lwarn{color:#ffd54a;margin-left:0}
 .ecard{border:1px solid #1b2030;border-radius:6px;padding:.35rem .45rem;margin:.3rem 0;background:#11151f}
 .ehead .esym{font-weight:700}.ename{color:#e7ebf3}
 .efns{color:#8b93a7;font-size:10.5px;margin:.1rem 0 .2rem}
@@ -98,7 +100,9 @@ function row(l) {
 function renderPanel() {
   if (!manifest) return;
   const groups = [...new Set(manifest.layers.map(l => l.group))];
-  $('layersList').innerHTML = groups.map(g =>
+  const warn = droppedIds.length
+    ? `<div class="lnote lwarn">dropped from the URL, not in layers/manifest.json: ${esc(droppedIds.join(', '))}</div>` : '';
+  $('layersList').innerHTML = warn + groups.map(g =>
     `<div class="lgroup">${esc(g)}</div>` + manifest.layers.filter(l => l.group === g).map(row).join('')
   ).join('') + `<div class="lnote">substrate ${esc(manifest.substrate)} · frozen · layers built ${esc(manifest.built_utc)}</div>`;
   for (const l of manifest.layers) {
@@ -230,8 +234,10 @@ async function hydrateTiles(l, s) {
 /* ── the URL: ?layers=engine,declared ─────────────────────────────────────── */
 
 /* The wafer's URL grammar: only permanent identifiers travel. A layer id is used
-   only if the manifest names it; anything else in the URL is dropped, and the
-   next write puts the URL back into canonical, manifest-ordered form. */
+   only if the manifest names it; anything else in the URL is dropped, NAMED in
+   the panel as dropped (policy chosen 15 Sep 2026: a visible warning, never a
+   silent canonicalisation), and the next write puts the URL back into
+   canonical, manifest-ordered form. */
 function writeLayersToURL() {
   if (!manifest) return;
   const on = manifest.layers.filter(l => state.get(l.id)?.on).map(l => l.id);
@@ -247,7 +253,10 @@ function readLayersFromURL() {
   if (!manifest) return;
   const raw = new URL(location.href).searchParams.get('layers') || '';
   const known = new Map(manifest.layers.map(l => [l.id, l]));
-  const wanted = [...new Set(raw.split(',').map(x => x.trim()))].filter(id => known.has(id));
+  const asked = [...new Set(raw.split(',').map(x => x.trim()).filter(Boolean))];
+  const wanted = asked.filter(id => known.has(id));
+  droppedIds = asked.filter(id => !known.has(id));
+  if (droppedIds.length) renderPanel();
   for (const id of wanted) state.get(id).on = true;     /* mark all first, so each write keeps the rest */
   if (raw) writeLayersToURL();
   for (const id of wanted) toggle(known.get(id), true);

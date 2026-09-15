@@ -1,10 +1,13 @@
 /* clock.mjs — the third axis of the wafer, drawn in two dimensions.
  *
- * Keys were issued in time order, so a key IS a moment. This module holds one
- * number, t, and everything that draws asks it the same two questions:
- *   born(k)  is key k issued yet? (k <= t)
- *   glow(k)  how recently was it born? 1 at the instant of birth, 0 once it is
- *            older than GLOW_SHARE of t. Age is drawn as brightness and size,
+ * A key is a DISCOVERY POSITION: the order in which the numbered database met
+ * each line, which is not the time the line was written (a lone brace has a
+ * tiny key and belongs to families written months later). This module holds
+ * one number, t, and everything that draws asks it the same two questions:
+ *   born(k)  is key k discovered yet? (k <= t)
+ *   glow(k)  how recently was it discovered? 1 at the instant of discovery, 0
+ *            once it is older than GLOW_SHARE of t. This is relative discovery
+ *            age, not elapsed historical time. Age is drawn as brightness and size,
  *            never as a projection: the wafer stays flat and frozen.
  * The page and the overlay import this one file, so both read the same clock.
  */
@@ -35,11 +38,15 @@ export function bornPrefix(keys) {
   return i;
 }
 
-/* THE CLOCK IN DATES. A family is whole at t once every line it carries is
-   born, that is once its largest key is at or below t. The clock prints the
-   newest first_written among the families whole at t: sorted by that largest
-   key with a running maximum of first_written, it is one binary search away,
-   and it can only move forward as t does.
+/* THE DATE SHOWN: the newest recorded family date visible. A family is whole
+   at t once every line it carries is discovered, that is once its largest key
+   is at or below t. The clock prints the newest first_written among the
+   families whole at t: sorted by that largest key with a running maximum of
+   first_written, it is one binary search away, and it can only move forward
+   as t does. Being a prefix maximum it plateaus: on the 14 Sep pack it reaches
+   2026-09-13T23:49:57Z at key 18,543 and stays there to key 342,795. That is
+   the statistic behaving as defined, not the sweep stopping. A replay in
+   physical time would need timestamp ordering, which the pack does not carry.
    Two readings were tried and dropped, and the data is why. Keyed by a family's
    SMALLEST line, the date saturates by key 1,000, because common lines (a lone
    brace) carry tiny keys into families written months later. Keyed by the

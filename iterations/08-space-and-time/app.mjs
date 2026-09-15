@@ -551,8 +551,8 @@ function paintClock() {
   const d = dateOf(clock.t);
   $('tdate').textContent = d ? d.iso : 'before the first family';
   /* The date stops when no family whole at a later key was written later; say so, never hide it. */
-  $('tsince').textContent = d ? ` · newest family since key ${fmt(d.wholeAt)}` : '';
-  $('tdate').title = d ? `newest family whole by key ${fmt(clock.t)}: ${d.name}, last line ${fmt(d.wholeAt)}` : '';
+  $('tsince').textContent = d ? ` · newest recorded family date visible, whole since key ${fmt(d.wholeAt)}` : '';
+  $('tdate').title = d ? `newest recorded family date among families whole by discovery position ${fmt(clock.t)}: ${d.name}, last line ${fmt(d.wholeAt)}` : '';
 }
 
 function writeT() {
