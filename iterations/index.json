@@ -1,6 +1,6 @@
 {
  "schema": "galaxies-wafers.iterations.v1",
- "count": 10,
+ "count": 13,
  "iterations": [
   {
    "n": 1,
@@ -79,9 +79,9 @@
    "dir": "09-deeplink-receiver",
    "slug": "deeplink-receiver",
    "title": "The Line Wafer — iteration 09, the deep-link receiver",
-   "commit": "a80a5b66b3fb7d06687f564bcaa8170d28eeb376",
-   "committed": "2026-09-15T17:53:21+01:00",
-   "subject": "iteration 09: the deep-link receiver â€” the page reads its URL only through the engine's parseDeepLink"
+   "commit": "deff7ad232feb9bd219f005f3f693fd687d054b1",
+   "committed": "2026-09-15T19:31:30+01:00",
+   "subject": "09 loads layers from a layers-only link; CI no longer passes a page whose layers never load"
   },
   {
    "n": 10,
@@ -91,6 +91,33 @@
    "commit": "0ac07784b462b590864ee426cd4fc413b8d6f2a9",
    "committed": "2026-09-15T17:54:16+01:00",
    "subject": "iteration 10, the ground bridge: 5,800 substations, 7,680 projects, 187 module routes on the wafer"
+  },
+  {
+   "n": 21,
+   "dir": "21-dark-pixels",
+   "slug": "dark-pixels",
+   "title": "Dark Pixels — every line dark, only the charted lines lit",
+   "commit": "1ad0e88747e8311f83e8e71d790b3658a30311b4",
+   "committed": "2026-09-15T19:39:25+01:00",
+   "subject": "iteration 21 dark pixels: the wafer ground dark, only lines a ticked layer charts are woken"
+  },
+  {
+   "n": 24,
+   "dir": "24-electrification-model",
+   "slug": "electrification-model",
+   "title": "Seven Meanings — a kilowatt is not a kilowatt",
+   "commit": "36327555c7d76af0a3a63a55f84a81e25a677474",
+   "committed": "2026-09-15T19:38:02+01:00",
+   "subject": "iteration 24 Seven Meanings: seven lit lanes for the electrification model's quantity meanings"
+  },
+  {
+   "n": 25,
+   "dir": "25-one-feeder",
+   "slug": "one-feeder",
+   "title": "One Feeder — the physics of one radial line, charted",
+   "commit": "8ac40522dc09a7340665f922140803603ab5d11a",
+   "committed": "2026-09-15T19:38:05+01:00",
+   "subject": "iteration 25 one feeder: the physics of one radial line drawn from three engine modules"
   }
  ]
 }
