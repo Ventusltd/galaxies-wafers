@@ -75,7 +75,20 @@ body{
 #hint{text-align:left}
 #foot a{color:var(--beam); pointer-events:auto; text-decoration:underline}
 
+/* Questions: the summary sits in the wordmark row, right of THE LINE WAFER; the
+   open body is placed by questions.mjs between the engine panel and the FLY form,
+   beneath both panels and the LAYERS list so it never covers a control. */
+#questions{position:fixed; z-index:4; right:.6rem; top:calc(var(--top) + .45rem); font-size:10.5px}
+#questions summary{cursor:pointer; color:var(--beam); letter-spacing:.08em; width:max-content; margin-left:auto; padding:.1rem .2rem}
+#qbody{position:fixed; left:.5rem; right:.5rem; top:12rem; background:#0e121bf2; border:1px solid var(--edge); border-radius:8px; padding:.4rem .55rem; max-height:45vh; overflow:auto; -webkit-overflow-scrolling:touch}
+#questions dl{margin:.1rem 0 0}
+#questions dt{color:var(--ink); margin-top:.35rem}
+#questions dd{margin:.1rem 0 0; color:var(--dim); overflow-wrap:anywhere}
+#questions p{margin:.4rem 0 0; overflow-wrap:anywhere}
+#questions a{color:var(--beam)}
+
 @media (min-width:760px){
+  #qbody{left:.5rem; right:auto; width:26rem}
   #beam{left:auto; right:1rem; width:26rem; bottom:calc(var(--bot) + 2.9rem)}
   #foot{flex-direction:row; gap:.6rem; justify-content:space-between}
   #hint{text-align:right}
