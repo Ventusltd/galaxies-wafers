@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="color-scheme" content="dark">
+<title>Journey — follow one thread through the Line Wafer, level by level</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="stage" aria-label="The Line Wafer drawn by level of detail: only what the current level needs is drawn."></canvas>
+
+<div id="top">
+<header id="bar">
+  <div class="row"><span id="wordmark">JOURNEY</span> <span id="count" class="dim">loading the numbered database…</span></div>
+  <div class="row"><span id="lvl">LEVEL —</span> <span id="drawn" class="dim"></span></div>
+</header>
+
+<nav id="levels" aria-label="levels of detail">
+  <button type="button" data-level="0">GALAXY</button>
+  <button type="button" data-level="1">SYSTEM</button>
+  <button type="button" data-level="2">PLANET</button>
+  <button type="button" data-level="3">SURFACE</button>
+</nav>
+
+<section id="pick">
+  <select id="thread" aria-label="thread to follow"><option value="">follow a thread…</option></select>
+  <button id="wake" type="button">ROUTES</button>
+  <button id="copies" type="button">COPIES</button>
+  <button id="chains" type="button">CHAINS</button>
+</section>
+<div id="loadrow" class="dim">WAIT · module routes load when you wake them or pick a thread</div>
+<div id="tilerow" class="dim"></div>
+<details id="pageq"><summary>Questions</summary><div class="body dim">computed when the numbered database has loaded</div></details>
+
+</div>
+
+<section id="card" hidden>
+  <button id="close" type="button" aria-label="close">✕</button>
+  <div id="cardbody"></div>
+</section>
+
+<section id="follow" hidden>
+  <button id="prev" type="button" aria-label="previous stop">◀</button>
+  <canvas id="sld" aria-label="the followed thread drawn as a single straight line with its stops as busbars"></canvas>
+  <button id="next" type="button" aria-label="next stop">▶</button>
+  <button id="leave" type="button" aria-label="stop following">✕</button>
+</section>
+
+<footer id="foot">
+  <span id="prov" class="dim">provenance loading</span>
+  <span id="hint" class="dim">drag to pan · pinch or scroll to change level · tap a white dot or, at SURFACE, a line · swipe the strip for the next stop</span>
+</footer>
+
+<noscript><p class="dim" style="padding:1rem">This surface is drawn from the numbered database at run time, so it needs JavaScript.</p></noscript>
+
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
