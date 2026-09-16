@@ -21,6 +21,7 @@ console.log(`${n.toLocaleString()} keys placed`);
 const t0 = performance.now();
 const ix = buildPickIndex(pos, n, SPACING);
 const buildMs = performance.now() - t0;
+const PER_CELL_TARGET = ix.occupancy.target;
 say(ix.bytes < 4e6, `index built in ${buildMs.toFixed(0)} ms, ${(ix.bytes / 1e6).toFixed(2)} MB, ${ix.cols}x${ix.rows} cells of ${ix.size.toFixed(2)}`);
 
 const scan = (wx, wy, reach) => {
@@ -59,6 +60,42 @@ for (const [wx, wy, reach] of taps) {
 }
 say(mismatch === 0, `${taps.length} taps (reach up to ${worst}) agree with the full scan`);
 say(gridMs < scanMs / 20, `grid ${(gridMs / taps.length * 1000).toFixed(1)} us per tap, scan ${(scanMs / taps.length * 1000).toFixed(1)} us — ${(scanMs / gridMs).toFixed(0)}x`);
+
+/* THE INDEX MUST KNOW WHEN ITS OWN ASSUMPTION HAS FAILED.
+   The cell size is derived from SPACING on the assumption of uniform density,
+   which holds for the wafer law and for no other. The estate now has laws that
+   cluster deliberately — a gravity law whose measured masses pull 453
+   directories toward one well. Under those the index stays CORRECT and stops
+   being fast, and the danger is that it says nothing. So it measures what it
+   actually built and reports it. */
+{
+  say(ix.occupancy.uniform, 'the wafer law builds a uniform index: ' + ix.occupancy.why);
+  say(ix.occupancy.worst <= PER_CELL_TARGET * 2,
+    `occupancy median ${ix.occupancy.median}, p99 ${ix.occupancy.p99}, worst ${ix.occupancy.worst} of a target ${ix.occupancy.target}`);
+
+  /* A deliberately clustered set, five wells, the shape of the gravity law. */
+  const m = [453, 382, 176, 26, 12], R = [0, 38.3, 176.4, 356.2, 392.2];
+  const tot = m.reduce((s2, v) => s2 + v, 0);
+  const cp = new Float32Array(n * 2);
+  let w = 0;
+  for (let h = 0; h < m.length; h++) {
+    const share = Math.round(n * m[h] / tot);
+    for (let j = 0; j < share && w < n; j++, w++) {
+      const t = Math.random() * Math.PI * 2, rr = Math.pow(Math.random(), 3) * 40;
+      cp[w * 2] = Math.cos(t) * (R[h] + rr);
+      cp[w * 2 + 1] = Math.sin(t) * (R[h] + rr);
+    }
+  }
+  while (w < n) { cp[w * 2] = 0; cp[w * 2 + 1] = 0; w++; }
+  const clustered = buildPickIndex(cp, n, SPACING);
+  say(!clustered.occupancy.uniform,
+    'a clustered law is REPORTED as unsuitable rather than silently slow: worst cell ' +
+    clustered.occupancy.worst.toLocaleString() + ', ' +
+    (clustered.occupancy.worst / clustered.occupancy.target).toFixed(0) + 'x the target');
+  say(clustered.occupancy.median <= ix.occupancy.median,
+    'and the MEDIAN improves while the structure collapses (' + clustered.occupancy.median +
+    ' vs ' + ix.occupancy.median + ') — an average would have passed this');
+}
 
 console.log(fail.length ? `\n${fail.length} FAILED` : '\nall checks passed');
 process.exit(fail.length ? 1 : 0);
