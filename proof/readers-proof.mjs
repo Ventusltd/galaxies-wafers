@@ -118,7 +118,19 @@ export async function readersProof({ manifestUrl, mutate = false, onLine = conso
      about where the reader stands, made from the wrong position. */
   const base = new URL('../', manifestUrl.replace(/[^/]*$/, '')).href;
   const man = await (await fetch(manifestUrl)).json();
-  const list = (man.list || man.surfaces || []).map(s => new URL(s.entry || (s.stamp + '/'), base).href);
+
+  /* A manifest entry with no `entry` is not a page and must not be fetched as
+     one. testcode/202609151500/ holds a single module and no index.html; the
+     Nest names it because it is on disk and classifies it `kind: "fragment",
+     entry: null` rather than hiding it — classify, don't exclude. The first
+     version of this file fell back to `stamp + '/'` whenever `entry` was
+     missing, turning that honest classification into a 404 and reporting it as
+     a defect. A proof that punishes a manifest for being precise is worse than
+     one that never looked. Fragments are counted and named, never fetched. */
+  const all = man.list || man.surfaces || [];
+  const pageEntries = all.filter(s => s.entry);
+  const fragments = all.filter(s => !s.entry);
+  const list = pageEntries.map(s => new URL(s.entry, base).href);
 
   if (mutate) {
     /* Three lies, one per class of check, so each is shown able to fail:
@@ -203,6 +215,7 @@ export async function readersProof({ manifestUrl, mutate = false, onLine = conso
   onLine(`manifest   ${manifestUrl}`);
   onLine(`           generated ${man.generated_utc || '(not stated)'}`);
   onLine(`serving    ${lag}`);
+  onLine(`manifest   ${all.length} entries: ${pageEntries.length} pages, ${fragments.length} classified as not-a-page and not fetched`);
   onLine(`pages      ${pages - pageBad.length} of ${pages} answer`);
   onLine(`markup     ${deps - depBad.length} of ${deps} declared references answer`);
   onLine(`modules    ${mods - modBad.length} of ${mods} declared module paths answer`);
